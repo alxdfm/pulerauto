@@ -1,0 +1,37 @@
+{
+  "name": "synthetic-rebalance-pnl",
+  "description": "Oracle for Epic 2 P&L through one rebalance (spec §13). Values in USD presentation units.",
+  "parent": {
+    "entryValueUsd": 1000,
+    "entryAmount0": 2,
+    "entryAmount1": 700,
+    "valueAtClose": 980,
+    "hodlAtClose": 1010,
+    "feesCollected": 12,
+    "feesPending": 0,
+    "gas": 0.4,
+    "swapCosts": 1.6,
+    "funding": 0,
+    "rewards": 0
+  },
+  "child": {
+    "entryValueUsd": 978,
+    "entryAmount0": 1.8,
+    "entryAmount1": 720,
+    "valueNow": 990,
+    "hodlNow": 985,
+    "feesCollected": 3,
+    "feesPending": 0.5,
+    "gas": 0,
+    "swapCosts": 0,
+    "funding": 0,
+    "rewards": 0
+  },
+  "expected": {
+    "parentPnlTotal": -10,
+    "parentPnlVsHodl": -20,
+    "childPnlTotal": 15.5,
+    "childPnlVsHodl": 8.5,
+    "note": "parentPnlTotal=(980-1000)+12-0.4-1.6=-10; vsHODL=-10-(1010-1000)=-20. child=(990-978)+3+0.5=15.5; vsHODL=15.5-(985-978)=8.5"
+  }
+}

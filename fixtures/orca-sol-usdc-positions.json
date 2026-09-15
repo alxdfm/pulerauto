@@ -1,0 +1,52 @@
+{
+  "pool": "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+  "capturedAt": "2026-09-15T18:23:18.508Z",
+  "countScanned": 20761,
+  "openPositions": [
+    {
+      "positionAddress": "11icVsZqyjFnXNtFufSSTGYafMWfu4fSMn9vgjFDK4A",
+      "positionMint": "35ugmegcKndDsq9QW86yEG8xAD28Cq7kjWh2X5ps14VL",
+      "tickLower": -25832,
+      "tickUpper": -23156,
+      "liquidity": "199853994",
+      "feeOwedA": "0",
+      "feeOwedB": "0"
+    },
+    {
+      "positionAddress": "13cxHNyRwqWnsxDB8HwXQMh1yNKe7bub71JiLWRG5EA",
+      "positionMint": "5LXJvDUk542LZkPa8bYrgbRyNwkv4CbrcBBkBW4NaT9o",
+      "tickLower": -20968,
+      "tickUpper": -18392,
+      "liquidity": "3214929974",
+      "feeOwedA": "0",
+      "feeOwedB": "0"
+    },
+    {
+      "positionAddress": "16vUT9gb3PZBtkfR9icSPAsgBJT1Vehgdm7GqZpLCNu",
+      "positionMint": "KGEPC2Bhm6xHTu8kdJMZoZHi3kYqD4qGAzwVhzYFaMz",
+      "tickLower": -17368,
+      "tickUpper": -13588,
+      "liquidity": "1162984175",
+      "feeOwedA": "0",
+      "feeOwedB": "0"
+    },
+    {
+      "positionAddress": "1Ku2YwqyogGJwxwvPX94cBDaPi37oQs9V1piWV7Shvn",
+      "positionMint": "taPdCaRn8gjn27Zqt3BLZoFiioXMAGJ6howfxD3Q8YR",
+      "tickLower": -443636,
+      "tickUpper": 443636,
+      "liquidity": "2445924",
+      "feeOwedA": "0",
+      "feeOwedB": "0"
+    },
+    {
+      "positionAddress": "1Luo25sdxmWquSgfytMQ1CiBmQAwZWuHLauvqGLUTDk",
+      "positionMint": "8dzqt2u6R8TJWGSx6aqsF7TAcC7x6o3mgD9YuSuGu7Qa",
+      "tickLower": -26388,
+      "tickUpper": -26184,
+      "liquidity": "20991553832",
+      "feeOwedA": "0",
+      "feeOwedB": "0"
+    }
+  ]
+}
