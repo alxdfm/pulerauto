@@ -98,7 +98,7 @@ async function insertCheckpointBatch(
   let i = 1
   for (const t of batch) {
     placeholders.push(
-      `($${i++}, $${i++}, $${i++}, $${i++}, $${i++})`,
+      `($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`,
     )
     values.push(
       poolId,
@@ -106,16 +106,21 @@ async function insertCheckpointBatch(
       t.tickIndex,
       t.liquidityNet.toString(),
       t.liquidityGross.toString(),
+      t.feeGrowthOutsideA.toString(),
+      t.feeGrowthOutsideB.toString(),
     )
   }
 
   await client.query(
     `INSERT INTO tick_liquidity_checkpoints
-       (pool_id, ts, tick_index, liquidity_net, liquidity_gross)
+       (pool_id, ts, tick_index, liquidity_net, liquidity_gross,
+        fee_growth_outside0, fee_growth_outside1)
      VALUES ${placeholders.join(', ')}
      ON CONFLICT (pool_id, ts, tick_index) DO UPDATE SET
        liquidity_net = EXCLUDED.liquidity_net,
-       liquidity_gross = EXCLUDED.liquidity_gross`,
+       liquidity_gross = EXCLUDED.liquidity_gross,
+       fee_growth_outside0 = EXCLUDED.fee_growth_outside0,
+       fee_growth_outside1 = EXCLUDED.fee_growth_outside1`,
     values,
   )
 }
@@ -201,10 +206,11 @@ export async function writeSyntheticConsistentCheckpoint(
   await db.withClient(async (client) => {
     await client.query(
       `INSERT INTO tick_liquidity_checkpoints
-         (pool_id, ts, tick_index, liquidity_net, liquidity_gross)
+         (pool_id, ts, tick_index, liquidity_net, liquidity_gross,
+          fee_growth_outside0, fee_growth_outside1)
        VALUES
-         ($1, $2, $3, $4, $4),
-         ($1, $2, $5, $6, $4)`,
+         ($1, $2, $3, $4, $4, 0, 0),
+         ($1, $2, $5, $6, $4, 0, 0)`,
       [opts.poolId, ts, lower, L.toString(), upper, (-L).toString()],
     )
   })

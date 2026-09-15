@@ -51,7 +51,7 @@ describe('persistRebalance', () => {
 
       const parentMint = `ParentMint${Date.now()}`
       const parent = fakePosition(parentMint, { lo: -40, hi: 40, L: 1000n })
-      const parentId = await db.withClient((c) =>
+      const parentUpsert = await db.withClient((c) =>
         upsertOpenPosition(c, {
           walletId,
           poolId,
@@ -63,6 +63,7 @@ describe('persistRebalance', () => {
           entryValueUsd: '1100',
         }),
       )
+      const parentId = parentUpsert.positionId
 
       const childMint = `ChildMint${Date.now()}`
       const child = fakePosition(childMint, { lo: -20, hi: 20, L: 2000n })

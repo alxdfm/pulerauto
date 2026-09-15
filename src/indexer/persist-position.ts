@@ -47,20 +47,46 @@ export async function ensureWallet(
 export async function upsertOpenPosition(
   client: pg.PoolClient,
   input: UpsertPositionInput,
-): Promise<number> {
+): Promise<{ positionId: number; created: boolean }> {
   const nft = input.position.positionMint
+  if (!nft) {
+    throw new Error('nft_mint is required for Whirlpool positions')
+  }
+
+  const { rows: existing } = await client.query<{ id: string }>(
+    `SELECT id::text FROM positions
+     WHERE wallet_id = $1 AND pool_id = $2 AND nft_mint = $3`,
+    [input.walletId, input.poolId, nft],
+  )
+  if (existing[0]) {
+    await client.query(
+      `UPDATE positions SET
+         tick_lower = $2,
+         tick_upper = $3,
+         liquidity = $4,
+         closed_at = NULL,
+         fee_growth_checkpoint0 = $5,
+         fee_growth_checkpoint1 = $6
+       WHERE id = $1`,
+      [
+        Number(existing[0].id),
+        input.position.tickLowerIndex,
+        input.position.tickUpperIndex,
+        input.position.liquidity.toString(),
+        input.position.feeGrowthCheckpointA.toString(),
+        input.position.feeGrowthCheckpointB.toString(),
+      ],
+    )
+    return { positionId: Number(existing[0].id), created: false }
+  }
+
   const { rows } = await client.query<{ id: string }>(
     `INSERT INTO positions (
        wallet_id, pool_id, strategy_id, nft_mint,
        tick_lower, tick_upper, liquidity,
        opened_at, entry_price, entry_amount0, entry_amount1, entry_value_usd,
-       parent_position_id
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-     ON CONFLICT (wallet_id, pool_id, nft_mint) DO UPDATE SET
-       tick_lower = EXCLUDED.tick_lower,
-       tick_upper = EXCLUDED.tick_upper,
-       liquidity = EXCLUDED.liquidity,
-       closed_at = NULL
+       parent_position_id, fee_growth_checkpoint0, fee_growth_checkpoint1
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      RETURNING id::text`,
     [
       input.walletId,
@@ -76,9 +102,11 @@ export async function upsertOpenPosition(
       input.entryAmount1.toString(),
       input.entryValueUsd,
       input.parentPositionId ?? null,
+      input.position.feeGrowthCheckpointA.toString(),
+      input.position.feeGrowthCheckpointB.toString(),
     ],
   )
-  return Number(rows[0]!.id)
+  return { positionId: Number(rows[0]!.id), created: true }
 }
 
 export async function insertPositionEvent(
@@ -95,25 +123,37 @@ export async function insertPositionEvent(
     slippageUsd?: string | null
     txRef: string
   },
-): Promise<void> {
-  await client.query(
-    `INSERT INTO position_events (
-       position_id, ts, kind, amount0, amount1, fee0, fee1,
-       gas_usd, slippage_usd, tx_ref
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-    [
-      opts.positionId,
-      opts.ts,
-      opts.kind,
-      opts.amount0?.toString() ?? null,
-      opts.amount1?.toString() ?? null,
-      opts.fee0?.toString() ?? null,
-      opts.fee1?.toString() ?? null,
-      opts.gasUsd ?? null,
-      opts.slippageUsd ?? null,
-      opts.txRef,
-    ],
-  )
+): Promise<{ inserted: boolean }> {
+  try {
+    await client.query(
+      `INSERT INTO position_events (
+         position_id, ts, kind, amount0, amount1, fee0, fee1,
+         gas_usd, slippage_usd, tx_ref
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [
+        opts.positionId,
+        opts.ts,
+        opts.kind,
+        opts.amount0?.toString() ?? null,
+        opts.amount1?.toString() ?? null,
+        opts.fee0?.toString() ?? null,
+        opts.fee1?.toString() ?? null,
+        opts.gasUsd ?? null,
+        opts.slippageUsd ?? null,
+        opts.txRef,
+      ],
+    )
+    return { inserted: true }
+  } catch (err: unknown) {
+    const code =
+      err && typeof err === 'object' && 'code' in err
+        ? String((err as { code: unknown }).code)
+        : ''
+    if (code === '23505') {
+      return { inserted: false }
+    }
+    throw err
+  }
 }
 
 export async function closePosition(
@@ -174,7 +214,7 @@ export async function persistRebalance(
         slippageUsd: opts.slippageUsd ?? null,
       })
 
-      const childId = await upsertOpenPosition(client, {
+      const child = await upsertOpenPosition(client, {
         walletId: opts.walletId,
         poolId: opts.poolId,
         strategyId: opts.strategyId,
@@ -188,7 +228,7 @@ export async function persistRebalance(
       })
 
       await insertPositionEvent(client, {
-        positionId: childId,
+        positionId: child.positionId,
         ts: opts.openedAt,
         kind: 'mint',
         amount0: opts.entryAmount0,
@@ -197,7 +237,7 @@ export async function persistRebalance(
       })
 
       await client.query('COMMIT')
-      return { parentId: opts.parentPositionId, childId }
+      return { parentId: opts.parentPositionId, childId: child.positionId }
     } catch (err) {
       await client.query('ROLLBACK')
       throw err
