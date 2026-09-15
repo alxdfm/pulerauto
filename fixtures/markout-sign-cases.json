@@ -1,0 +1,33 @@
+{
+  "description": "Known markout sign cases (spec §7). amount0 > 0 = pool received token0; + product ⇒ LP gained.",
+  "cases": [
+    {
+      "name": "pool_receives_token0_price_up_lp_gains",
+      "samples": [
+        { "amount0": 10, "priceExec": 100, "priceAfter": 101 }
+      ],
+      "volume": 1000,
+      "expectSign": "positive",
+      "expectBpsApprox": 100
+    },
+    {
+      "name": "pool_pays_token0_price_up_lp_loses",
+      "samples": [
+        { "amount0": -10, "priceExec": 100, "priceAfter": 101 }
+      ],
+      "volume": 1000,
+      "expectSign": "negative",
+      "expectBpsApprox": -100
+    },
+    {
+      "name": "balanced_round_trip",
+      "samples": [
+        { "amount0": 5, "priceExec": 100, "priceAfter": 100 },
+        { "amount0": -5, "priceExec": 100, "priceAfter": 100 }
+      ],
+      "volume": 1000,
+      "expectSign": "zero",
+      "expectBpsApprox": 0
+    }
+  ]
+}
