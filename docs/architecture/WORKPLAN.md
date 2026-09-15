@@ -35,10 +35,10 @@
 
 ## Epic 1 — Segmentação multi-tick + fee capture
 
-**Status (2026-09-15):** pipeline done; invariante 5 = 100% no conjunto indexado.
+**Status (2026-09-15):** pipeline done; gate fee 100% no conjunto indexado; soak 30d de calendário em resume (RPC).
 
 **Done (spec):** `Σ fee_seg = fee_amount` em **100%** dos swaps de 30 dias de mercado.  
-**Done (hoje):** gate SQL 100% sobre swaps indexados na janela 30d; soak contínuo de 30 dias de mercado exige RPC com quota (`pnpm swaps:backfill --hours 720`).
+**Done (hoje):** gate SQL 100% sobre swaps indexados; backfill resumível `pnpm swaps:backfill --hours 720 --max 0` (publicnode: batch=1; quota RPC acelera profundidade de calendário).
 
 - Decoder `Traded` + `src/indexer/index-swaps.ts` / `persist-swap.ts`
 - Math `src/math/swap-segments.ts` + `allocateFeeSegments`
@@ -50,25 +50,31 @@
 
 ## Epic 2 — Positions + P&L decomposto
 
-**Status:** não iniciado.
+**Status (2026-09-15):** schema + math + ingest + snapshots + gates sintético/live.
 
-**Done quando:** P&L bate UI do DEX **ao centavo**, inclusive através de um rebalance.
+**Done quando:** P&L bate UI do DEX **ao centavo**, inclusive através de um rebalance.  
+**Done (hoje):** migration §16; math amounts/V/feeGrowth/P&L; decoder Position; rebalance fecha/abre; `position_snapshots`; fixture sintético + posições live Orca reconciliadas ao centavo vs amounts on-chain.
 
-- Schema §16: `wallets`, `strategies`, `positions`, events, snapshots
-- Contabilidade §13; encadeamento de rebalance
-- Comparação com UI Orca em caso conhecido
+- Schema: `migrations/006_positions.sql`
+- Math: `position-amounts`, `position-value`, `fee-growth-inside`, `position-pnl`
+- Indexer: `position-decode`, `persist-position`, `index-position`
+- Analyzer: `src/analyzer/position-snapshot.ts`
+- Scripts: `positions:index`, `positions:snapshot`, `positions:capture-fixture`, `pnl:check`
+- ADR: `docs/decisions/2026-09-15_whirlpool-position-decode.md`
+- Fixtures: `fixtures/synthetic-rebalance-pnl.json`, `fixtures/orca-sol-usdc-positions.json`
 
 ---
 
 ## Epic 3 — Alertas (histerese + dedup)
 
-**Status:** não iniciado.
+**Status (2026-09-15):** schema + watcher + Telegram dry-run + testes dedup/histerese.
 
-**Done quando:** zero alertas duplicados em 7 dias de mercado real.
+**Done quando:** zero alertas duplicados em 7 dias de mercado real.  
+**Done (hoje):** `alert_rules`/`alerts` com dedup horário (`dedup_hour` UTC); latches de histerese; heartbeat; `pnpm watcher` / `watcher:once`; Telegram dry-run sem token.
 
-- Schema §18: rules + alerts
-- Watcher process; Telegram default
-- Heartbeat / liveness (§19)
+- Schema: `migrations/007_alerts.sql`
+- Watcher: `src/watcher/` (range_exit, range_proximity, data_gap)
+- ADR: `docs/decisions/2026-09-15_watcher-alerts.md`
 
 ---
 
@@ -122,9 +128,9 @@
 ## Ordem de implementação sugerida (próximas sessões)
 
 ```
-1. Soak Epic 1 — backfill 30d de mercado (RPC com quota)
-2. Epic 2 — positions + P&L decomposto
-3. Epic 3 — watcher / alertas
+1. Soak Epic 1 — continuar backfill até span ≥30d (RPC com quota)
+2. Epic 4 — edge_ratio / markout / regime
+3. Soak de alertas 7d (zero duplicados) em mercado real
 ```
 
 ---

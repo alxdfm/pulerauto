@@ -73,9 +73,9 @@ Testes:           Vitest (math + invariantes DB + fixture de ticks)
 
 | Processo | Privilegio | Papel |
 |----------|------------|--------|
-| indexer  | read RPC + write DB | pool_states, ticks, swaps, swap_segments |
-| analyzer | read DB + write métricas | LVR, edge, markout (ainda não) |
-| watcher  | alerts | ainda não |
+| indexer  | read RPC + write DB | pool_states, ticks, swaps, swap_segments, positions |
+| analyzer | read DB + write métricas | position_snapshots; LVR/edge ainda não |
+| watcher  | read DB + write alerts | histerese, dedup, heartbeat → Telegram |
 | executor | signer isolado | Fase 7 |
 
 ---

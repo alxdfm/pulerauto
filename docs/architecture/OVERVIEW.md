@@ -30,14 +30,14 @@ pools e alertar posições — modo advisory por padrão; execução live é opt
 [analyzer] →  fee capture, LVR, edge_ratio, markout, P&L   (ainda não)
       │
       ▼
-[watcher]  →  alertas (histerese + dedup) → Telegram       (ainda não)
+[watcher]  →  alertas (histerese + dedup) → Telegram (dry-run sem token)
       │
       ▼
 [executor] →  dry-run → live (Fase 7; signer isolado)      (ainda não)
 ```
 
 Roadmap deliberado: **contabilidade → sinal → execução** (Parte IV da spec).  
-Fase atual: contabilidade (Epic 0–1 feitos; próximo = Epic 2 positions/P&L).
+Fase atual: contabilidade fechada (0–2); alertas Epic 3 online; próximo sinal (Epic 4).
 
 ---
 
@@ -49,8 +49,8 @@ Fase atual: contabilidade (Epic 0–1 feitos; próximo = Epic 2 positions/P&L).
 | math core | W, A, LVR, ticks, sqrt-price, swap-segments, fee-capture | `src/math/` |
 | indexer | Whirlpool decode, ticks Fixed/Dynamic, swaps/`Traded`, segments | `src/indexer/` |
 | db | client, migrate, invariantes §15 | `src/db/` |
-| analyzer | Métricas derivadas e ranking | previsto: `src/analyzer/` |
-| watcher | Alertas | previsto: `src/watcher/` |
+| analyzer | Métricas derivadas, P&L snapshots | `src/analyzer/` (position snapshots; LVR/edge depois) |
+| watcher | Alertas histerese + dedup + heartbeat | `src/watcher/` |
 | executor | Execução dry-run/live | previsto: `src/executor/` |
 
 ---

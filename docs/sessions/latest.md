@@ -1,46 +1,46 @@
 # Última Sessão — Contexto Persistido
 
 **Última atualização:** 2026-09-15  
-**Sessão:** Sync de documentação pós Epic 0.D + Epic 1
+**Sessão:** Epic 3 — watcher / alertas
 
 ---
 
 ## O que foi feito
 
-- **Epic 0.D:** DynamicTickArrays; L exata; fixture offline; WARN removido
-- **Epic 1:** `Traded` → swaps/`swap_segments`; gate Σ fee no conjunto indexado
-- **Docs:** WORKPLAN/OVERVIEW/STACK/CLAUDE/README alinhados; ADR `whirlpool-traded-ingest`; ADR decoder web3 sincronizado
+- **Epic 3:** `migrations/007_alerts.sql` (rules, alerts, latches, heartbeats)
+- Histerese boolean + dedup (`cooldown` + `dedup_hour` UTC)
+- Watcher avalia `range_exit`, `range_proximity`, `data_gap`; Telegram dry-run sem token
+- Scripts: `pnpm watcher`, `pnpm watcher:once`
+- ADR: `2026-09-15_watcher-alerts.md`
+- Testes: 54 passing
 
 ---
 
 ## Estado
 
 ```
-Funcionando:     pool_states + ticks Fixed/Dynamic, L exata, swaps→segments, gate fee
-Em progresso:    soak 30d de mercado (RPC rate limit; usar publicnode/pago)
+Funcionando:     indexer, analyzer snapshots, watcher alerts
+Em progresso:    soak swaps 30d (RPC); soak alertas 7d zero-dup
 Bloqueado:       nada crítico
-Próximo epic:    Epic 2 — positions + P&L
+Próximo epic:    Epic 4 — edge_ratio, markout, regime
 ```
 
 ---
 
 ## Próximos passos
 
-1. Soak `pnpm swaps:backfill --hours 720` em RPC com quota
-2. Epic 2: positions + P&L decomposto
-3. Indexar `tick_liquidity_events` contínuos (opcional para L histórica)
+1. Continuar soak swaps + deixar `watcher` rodando 7d (critério zero duplicados)
+2. Epic 4: métricas derivadas / edge_ratio / markout
+3. Configurar `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` quando for live
 
 ---
 
 ## Comandos
 
 ```bash
-docker compose up -d
-./node_modules/.bin/tsx src/scripts/migrate.ts
-./node_modules/.bin/vitest run
-./node_modules/.bin/tsx src/indexer/run.ts
-./node_modules/.bin/tsx src/scripts/check-invariants.ts
-SOLANA_RPC_URL=https://solana.publicnode.com pnpm swaps:backfill --max 100 --delay-ms 600
-pnpm swaps:check
-pnpm ticks:capture-fixture
+pnpm db:migrate
+pnpm test
+pnpm watcher:once
+pnpm watcher   # loop; WATCHER_INTERVAL_MS=30000
+# TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... pnpm watcher
 ```

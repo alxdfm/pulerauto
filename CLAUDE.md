@@ -101,9 +101,9 @@ Processos:
 
 | Processo | Status |
 |----------|--------|
-| `indexer` | ativo (`src/indexer/`) — pool_states, ticks Fixed/Dynamic, swaps/segments |
-| `analyzer` | previsto (`src/analyzer/`) |
-| `watcher` | previsto (`src/watcher/`) |
+| `indexer` | ativo (`src/indexer/`) — pool_states, ticks Fixed/Dynamic, swaps/segments, positions |
+| `analyzer` | ativo (`src/analyzer/`) — position_snapshots / P&L; LVR/edge depois |
+| `watcher` | ativo (`src/watcher/`) — range_exit/proximity/data_gap, Telegram dry-run |
 | `executor` | previsto Fase 7 (`src/executor/`) |
 
 Math canônica: `src/math/`. DB: `src/db/` + `migrations/`.
