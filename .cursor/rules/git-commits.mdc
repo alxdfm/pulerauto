@@ -1,5 +1,5 @@
 ---
-description: Conventional Commits without AI Co-authored-by trailers
+description: Conventional Commits, small commits, no AI Co-authored-by trailers
 alwaysApply: true
 ---
 
@@ -7,6 +7,8 @@ alwaysApply: true
 
 - Use Conventional Commits: `type(scope): description` in English, imperative, no trailing period
 - No commit body unless the user explicitly asks for one
+- **Small commits:** one concern per commit (math, migration, indexer, analyzer, watcher, docs, chore). Never bundle unrelated features or whole epics into a single commit; prefer a short stack of focused commits
+- If a large change set is already staged as one blob, split it before committing (reset/unstage and recommit by concern)
 - **Never** add `Co-authored-by` trailers, including:
   - `Co-authored-by: Cursor <cursoragent@cursor.com>`
   - `Co-authored-by: Claude <...>` (any Claude / Anthropic variant)
