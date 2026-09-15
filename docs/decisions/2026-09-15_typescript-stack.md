@@ -41,7 +41,7 @@ Alinha com a velocidade desejada nas Fases 0–4 e com SDKs Solana. Precisão on
 - Possível rewrite parcial de hot path em Rust no futuro
 
 **Impacto no código:**
-- Ainda sem `src/`; decisão amarra STACK.md e próximas decisões de pacotes
+- Na data da decisão ainda não havia `src/`; hoje: `src/math/`, `src/db/`, `src/indexer/` (STACK.md)
 
 ---
 

@@ -1,6 +1,6 @@
 # Stack & Arquitetura
 
-> Preenchido no setup inicial (2026-09-15). Atualizado com bootstrap Epic 0.
+> Preenchido no setup inicial (2026-09-15). Atualizado após Epic 0.D + Epic 1.
 
 ---
 
@@ -43,9 +43,11 @@ Monitoramento:  nenhum por ora
 ```
 Chain:          Solana mainnet (leitura)
 SDK principal:  @solana/web3.js 1.x + decoder manual Whirlpool
+                (pool, FixedTickArray, DynamicTickArray, evento Traded)
 Wallet:         N/A
 Ambiente:       mainnet (read-only)
 Pool piloto:    Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE (Orca SOL/USDC ts=4)
+RPC tip:        mainnet-beta ok p/ gPA; publicnode ajuda backfill de swaps (ver .env.example)
 ```
 
 ---
@@ -56,7 +58,8 @@ Pool piloto:    Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE (Orca SOL/USDC ts=4
 |--------|--------|-----------------|
 | @solana/web3.js | 1.x | Decoder alinhado ao layout atual; kit v2 depois |
 
-Tick arrays: FixedTickArray (9988) + DynamicTickArray (148–10004); ver ADR `2026-09-15_dynamic-tick-array.md`.
+Tick arrays: FixedTickArray (9988) + DynamicTickArray (148–10004); ver ADR `2026-09-15_dynamic-tick-array.md`.  
+Swaps: evento `Traded` via logs; ver ADR `2026-09-15_whirlpool-traded-ingest.md`.
 
 ---
 
@@ -65,12 +68,12 @@ Tick arrays: FixedTickArray (9988) + DynamicTickArray (148–10004); ver ADR `20
 ```
 Padrão geral:     modular monolith por processo
 Separação:        math / db / indexer / scripts
-Testes:           Vitest (math + invariantes DB)
+Testes:           Vitest (math + invariantes DB + fixture de ticks)
 ```
 
 | Processo | Privilegio | Papel |
 |----------|------------|--------|
-| indexer  | read RPC + write DB | estado de mercado |
+| indexer  | read RPC + write DB | pool_states, ticks, swaps, swap_segments |
 | analyzer | read DB + write métricas | LVR, edge, markout (ainda não) |
 | watcher  | alerts | ainda não |
 | executor | signer isolado | Fase 7 |

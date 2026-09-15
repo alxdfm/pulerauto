@@ -26,20 +26,20 @@ Precisávamos ler estado on-chain do Orca Whirlpool (SOL/USDC) na Fase 0 sem ama
 
 > **`@solana/web3.js` 1.x + `decodeWhirlpool` local**
 
-Snapshot de `pool_states` na Fase 0. Tick arrays on-chain completos ficam como follow-up de 0.D (hoje checkpoint sintético consistente valida o pipeline de invariantes).
+Snapshot de `pool_states` e decode de tick arrays (Fixed + Dynamic) sem SDK Orca em runtime. Ver ADR `2026-09-15_dynamic-tick-array.md`.
 
 ---
 
 ## Consequências
 
-**Positivas:** bootstrap rápido; invariantes testáveis sem SDK.
+**Positivas:** bootstrap rápido; invariantes testáveis sem SDK; L on-chain exata no pool piloto.
 
-**Negativas / Trade-offs:** decoder pode quebrar se Orca mudar layout; tick arrays reais ainda não indexados.
+**Negativas / Trade-offs:** decoder pode quebrar se Orca mudar layout; dois layouts de tick array a manter.
 
-**Impacto no código:** `src/indexer/whirlpool-decode.ts`, `src/indexer/index-pool.ts`
+**Impacto no código:** `src/indexer/whirlpool-decode.ts`, `src/indexer/tick-array.ts`, `src/indexer/dynamic-tick-array.ts`, `src/indexer/fetch-whirlpool-ticks.ts`, `src/indexer/index-pool.ts`
 
 ---
 
 ## Revisão futura
 
-Tick arrays Fixed + Dynamic indexados (ADR `2026-09-15_dynamic-tick-array.md`). Manter decoder manual; SDK Orca só se layout mudar de forma recorrente.
+Manter decoder manual; SDK Orca só se layout mudar de forma recorrente.

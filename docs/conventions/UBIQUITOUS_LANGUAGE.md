@@ -82,7 +82,7 @@ Se um termo não está aqui e não é óbvio → **pergunte antes de inventar**.
 
 ### Ações / Verbos
 
-**index** — Ingerir estado on-chain (pool states, swaps, tick events) para o DB.
+**index** — Ingerir estado on-chain (pool states, swaps, tick checkpoints; tick events quando existirem) para o DB.
 [Nunca use: sync/scrape como nome de módulo principal]
 
 **analyze** — Calcular métricas derivadas (fees, LVR, edge, markout, P&L).

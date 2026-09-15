@@ -84,13 +84,29 @@ docs/
     YYYY-MM-DD_*.md          ← decisões registradas
   sessions/
     latest.md                ← contexto da última sessão (fallback sem MCP)
+migrations/                  ← SQL Timescale
+fixtures/                    ← snapshots on-chain para testes offline
+src/
+  math/                      ← primitivas + swap-segments + fee-capture
+  db/                        ← client, migrate, invariantes
+  indexer/                   ← Whirlpool decode, ticks, swaps
+  scripts/
 scripts/
   onboarding.sh              ← perguntas de setup inicial do projeto
 .ripgrepignore               ← o que o agente NÃO deve ler
 .gitignore                   ← padrão
 ```
 
-Processos previstos (ainda sem `src/`): `indexer`, `analyzer`, `watcher`, `executor`.
+Processos:
+
+| Processo | Status |
+|----------|--------|
+| `indexer` | ativo (`src/indexer/`) — pool_states, ticks Fixed/Dynamic, swaps/segments |
+| `analyzer` | previsto (`src/analyzer/`) |
+| `watcher` | previsto (`src/watcher/`) |
+| `executor` | previsto Fase 7 (`src/executor/`) |
+
+Math canônica: `src/math/`. DB: `src/db/` + `migrations/`.
 
 ---
 

@@ -22,9 +22,11 @@ O critério da Fase 0 exige `L_ativa` reconstruída **exatamente** igual a `pool
 
 ---
 
-## Decisão tomada (temporária, 2026-09-15)
+## Decisão tomada (temporária, 2026-09-15 — supersedida pela Resolução abaixo)
 
 > **Seguir com ticks on-chain via gPA; manter teste sintético para o pipeline de invariantes; tratar delta exato como bug aberto 0.D.**
+
+Mantida aqui como histórico. O bug foi fechado no mesmo dia ao indexar DynamicTickArray.
 
 ---
 

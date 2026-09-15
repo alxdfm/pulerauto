@@ -24,12 +24,12 @@
 | 0.A Bootstrap TS + Docker | done |
 | 0.B Schema + seed Orca SOL/USDC | done (`Czfq3x...`) |
 | 0.C Math mínimo + testes | done |
-| 0.D.1 Snapshot pool_states live | done |
+| 0.D.1 Snapshot `pool_states` live | done |
+| 0.D.2 Swaps ingest | **done** (entregue no Epic 1) |
 | 0.D.3–4 Tick arrays on-chain | **done** (Fixed + Dynamic; fixture offline) |
-| 0.D.5 Invariantes 1–3 (L) | done on-chain; sintético permanece só em unit tests |
-| 0.D.2 Swaps ingest | pendente (Fase 1) |
+| 0.D.5 Invariantes 1–4 (L + fee_growth) | done on-chain; sintético só em unit tests |
 
-**Done quando:** tick arrays reais + L reconstrói sem sintético; invariantes de liquidez em checkpoint on-chain.
+**Done quando:** tick arrays reais + L reconstrói sem sintético; invariantes de liquidez em checkpoint on-chain. **Critério atingido.**
 
 ---
 
@@ -37,18 +37,22 @@
 
 **Status (2026-09-15):** pipeline done; invariante 5 = 100% no conjunto indexado.
 
-**Done:** `Σ fee_seg = fee_amount` em **100%** dos swaps presentes na janela de 30d (gate SQL).  
-Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit alto (`pnpm swaps:backfill --hours 720`).
+**Done (spec):** `Σ fee_seg = fee_amount` em **100%** dos swaps de 30 dias de mercado.  
+**Done (hoje):** gate SQL 100% sobre swaps indexados na janela 30d; soak contínuo de 30 dias de mercado exige RPC com quota (`pnpm swaps:backfill --hours 720`).
 
-- Decoder `Traded` + `src/indexer/index-swaps.ts`
+- Decoder `Traded` + `src/indexer/index-swaps.ts` / `persist-swap.ts`
 - Math `src/math/swap-segments.ts` + `allocateFeeSegments`
+- Cursor `indexer_cursors` (`migrations/005_indexer_cursors.sql`)
 - `pnpm swaps:check` → `sum_fee_seg_equals_fee_amount`
+- ADR: `docs/decisions/2026-09-15_whirlpool-traded-ingest.md`
 
 ---
 
 ## Epic 2 — Positions + P&L decomposto
 
-**Done:** P&L bate UI do DEX **ao centavo**, inclusive através de um rebalance.
+**Status:** não iniciado.
+
+**Done quando:** P&L bate UI do DEX **ao centavo**, inclusive através de um rebalance.
 
 - Schema §16: `wallets`, `strategies`, `positions`, events, snapshots
 - Contabilidade §13; encadeamento de rebalance
@@ -58,7 +62,9 @@ Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit
 
 ## Epic 3 — Alertas (histerese + dedup)
 
-**Done:** zero alertas duplicados em 7 dias de mercado real.
+**Status:** não iniciado.
+
+**Done quando:** zero alertas duplicados em 7 dias de mercado real.
 
 - Schema §18: rules + alerts
 - Watcher process; Telegram default
@@ -68,7 +74,9 @@ Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit
 
 ## Epic 4 — Sinal: edge_ratio, markout, regime
 
-**Done:** ranking semanal reproduzível; markout com sinal validado em caso conhecido.
+**Status:** não iniciado.
+
+**Done quando:** ranking semanal reproduzível; markout com sinal validado em caso conhecido.
 
 - Métricas derivadas §17
 - Markout §7 (sinal sobre `amount0`)
@@ -78,7 +86,9 @@ Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit
 
 ## Epic 5 — Backtest + walk-forward
 
-**Done:** supera 3 benchmarks OOS com Reality Check p < 0.05.
+**Status:** não iniciado.
+
+**Done quando:** supera 3 benchmarks OOS com Reality Check p < 0.05.
 
 - Fees reconstruídas (não fee growth “chute”)
 - Walk-forward; Reality Check / n_trials (§12)
@@ -88,7 +98,9 @@ Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit
 
 ## Epic 6 — Multi-DEX (bins) → multi-chain
 
-**Done:** estimador de LVR seleciona por `n_bins_active` (§10).
+**Status:** não iniciado.
+
+**Done quando:** estimador de LVR seleciona por `n_bins_active` (§10).
 
 - Raydium / Meteora DLMM; depois EVM Uniswap v3/v4
 - `fee_growth_shift` e modelo por DEX
@@ -97,7 +109,9 @@ Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit
 
 ## Epic 7 — Execução dry-run → live; hedge por último
 
-**Done:** 30 dias dry-run sem divergência vs execução simulada.
+**Status:** não iniciado.
+
+**Done quando:** 30 dias dry-run sem divergência vs execução simulada.
 
 - Processo `executor` isolado (§19)
 - Controles: simulate, allowlist, limites, circuit breaker
@@ -108,9 +122,9 @@ Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit
 ## Ordem de implementação sugerida (próximas sessões)
 
 ```
-1. Epic 0 fechado (L exata Fixed+Dynamic)
-2. Epic 1 — swaps → swap_segments (Σ fee_seg = fee_amount, 30d)
-3. Epic 2 — positions + P&L
+1. Soak Epic 1 — backfill 30d de mercado (RPC com quota)
+2. Epic 2 — positions + P&L decomposto
+3. Epic 3 — watcher / alertas
 ```
 
 ---
@@ -123,3 +137,4 @@ Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit
 | Executor / chaves | 7 |
 | Hedge venues | 7 |
 | Multi-pool ranking productizado | 4+ |
+| `tick_liquidity_events` contínuos | pós-checkpoint; útil p/ L histórica no backfill |
