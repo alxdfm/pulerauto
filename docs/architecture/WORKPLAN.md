@@ -55,6 +55,14 @@
 **Done quando:** P&L bate UI do DEX **ao centavo**, inclusive através de um rebalance.  
 **Done (hoje):** migration §16; math amounts/V/feeGrowth/P&L; decoder Position; rebalance fecha/abre; `position_snapshots`; fixture sintético + posições live Orca reconciliadas ao centavo vs amounts on-chain.
 
+**Dívida conhecida (code review — não trata como fechado §13 completo):**
+- `analyzePositionFromDb` nested `withClient` (risco de deadlock no pool)
+- pending fees sem `feeGrowthOutside`/checkpoint persistidos → não confiar em `fees_pending_usd` do path DB
+- `SUM(fee0+fee1)/scale1` mistura tokens no collect
+- `positions:index` usa `pools ORDER BY id LIMIT 1` (ignora whirlpool da Position)
+- re-index gera `mint` events duplicados; `entry_*` no index live = mark atual
+- `UNIQUE (wallet_id, pool_id, nft_mint)` não cobre `nft_mint` NULL
+
 - Schema: `migrations/006_positions.sql`
 - Math: `position-amounts`, `position-value`, `fee-growth-inside`, `position-pnl`
 - Indexer: `position-decode`, `persist-position`, `index-position`
@@ -71,6 +79,11 @@
 
 **Done quando:** zero alertas duplicados em 7 dias de mercado real.  
 **Done (hoje):** `alert_rules`/`alerts` com dedup horário (`dedup_hour` UTC); latches de histerese; heartbeat; `pnpm watcher` / `watcher:once`; Telegram dry-run sem token.
+
+**Dívida conhecida (code review):**
+- latch `FIRED` persistido **antes** de `emitAlert` → episódio pode silenciar se cooldown/dedup rejeitar
+- thrash de `withClient` por regra; falha Telegram ignorada após insert
+- sentinel `since_at = epoch` para “já disparou” (preferir flag explícita)
 
 - Schema: `migrations/007_alerts.sql`
 - Watcher: `src/watcher/` (range_exit, range_proximity, data_gap)

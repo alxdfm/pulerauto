@@ -1,18 +1,17 @@
 # Última Sessão — Contexto Persistido
 
 **Última atualização:** 2026-09-15  
-**Sessão:** Epic 3 — watcher / alertas
+**Sessão:** Sync de docs pós Epic 2–3 + push; code review registrado como dívida
 
 ---
 
-## O que foi feito
+## O que foi feito (histórico recente)
 
-- **Epic 3:** `migrations/007_alerts.sql` (rules, alerts, latches, heartbeats)
-- Histerese boolean + dedup (`cooldown` + `dedup_hour` UTC)
-- Watcher avalia `range_exit`, `range_proximity`, `data_gap`; Telegram dry-run sem token
-- Scripts: `pnpm watcher`, `pnpm watcher:once`
-- ADR: `2026-09-15_watcher-alerts.md`
-- Testes: 54 passing
+- **Epic 2:** positions schema/math/ingest/snapshots; fixtures sintético + Orca live
+- **Epic 3:** alert_rules/alerts, watcher histerese+dedup, Telegram dry-run
+- **Git:** commits pequenos (rule atualizada); push `master` → origin
+- **Soak swaps:** chunks até ~1151 swaps; gate fee **100%** (`mismatched=0`); span calendário ainda curto (~14 min) — profundidade 30d exige mais RPC
+- **Docs:** README / OVERVIEW / STACK / CLAUDE / WORKPLAN alinhados a Epics 0–3
 
 ---
 
@@ -22,16 +21,18 @@
 Funcionando:     indexer, analyzer snapshots, watcher alerts
 Em progresso:    soak swaps 30d (RPC); soak alertas 7d zero-dup
 Bloqueado:       nada crítico
+Dívida:          ver WORKPLAN Epic 2/3 (pending fees, latch→emit, pool bind, …)
 Próximo epic:    Epic 4 — edge_ratio, markout, regime
+                 (ou corrigir dívida Epic 2/3 antes)
 ```
 
 ---
 
 ## Próximos passos
 
-1. Continuar soak swaps + deixar `watcher` rodando 7d (critério zero duplicados)
-2. Epic 4: métricas derivadas / edge_ratio / markout
-3. Configurar `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` quando for live
+1. Continuar `pnpm swaps:backfill --hours 720` em RPC com quota até span ≥30d
+2. Corrigir dívida Epic 2/3 do code review **ou** Epic 4 (sinal)
+3. Rodar `watcher` 7d e validar zero duplicados; setar `TELEGRAM_*` se live
 
 ---
 
@@ -40,7 +41,13 @@ Próximo epic:    Epic 4 — edge_ratio, markout, regime
 ```bash
 pnpm db:migrate
 pnpm test
+pnpm indexer
+pnpm swaps:check
+SOLANA_RPC_URL=https://solana.publicnode.com pnpm swaps:backfill --hours 720 --max 100 --delay-ms 400
+pnpm positions:capture-fixture
+pnpm positions:index --mint <nft> --wallet <addr>
+pnpm positions:snapshot --position <id>
+pnpm pnl:check --position <id>
 pnpm watcher:once
-pnpm watcher   # loop; WATCHER_INTERVAL_MS=30000
-# TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... pnpm watcher
+pnpm watcher
 ```

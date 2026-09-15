@@ -1,6 +1,6 @@
 # Stack & Arquitetura
 
-> Preenchido no setup inicial (2026-09-15). Atualizado após Epic 0.D + Epic 1.
+> Atualizado: 2026-09-15 (Epics 0–3).
 
 ---
 
@@ -35,7 +35,7 @@ Auth:           nenhum por ora
 ```
 Hosting:        local (docker compose)
 CI/CD:          indefinido
-Monitoramento:  nenhum por ora
+Monitoramento:  watcher heartbeat + Telegram (dry-run local)
 ```
 
 ## Blockchain / Web3 (se aplicável)
@@ -43,11 +43,13 @@ Monitoramento:  nenhum por ora
 ```
 Chain:          Solana mainnet (leitura)
 SDK principal:  @solana/web3.js 1.x + decoder manual Whirlpool
-                (pool, FixedTickArray, DynamicTickArray, evento Traded)
-Wallet:         N/A
+                (pool, FixedTickArray, DynamicTickArray, Position,
+                 evento Traded)
+Wallet:         N/A (read-only; executor = Fase 7)
 Ambiente:       mainnet (read-only)
 Pool piloto:    Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE (Orca SOL/USDC ts=4)
-RPC tip:        mainnet-beta ok p/ gPA; publicnode ajuda backfill de swaps (ver .env.example)
+RPC tip:        mainnet-beta ok p/ getProgramAccounts;
+                publicnode ajuda backfill de swaps (batch getTransaction=1)
 ```
 
 ---
@@ -59,7 +61,9 @@ RPC tip:        mainnet-beta ok p/ gPA; publicnode ajuda backfill de swaps (ver 
 | @solana/web3.js | 1.x | Decoder alinhado ao layout atual; kit v2 depois |
 
 Tick arrays: FixedTickArray (9988) + DynamicTickArray (148–10004); ver ADR `2026-09-15_dynamic-tick-array.md`.  
-Swaps: evento `Traded` via logs; ver ADR `2026-09-15_whirlpool-traded-ingest.md`.
+Swaps: evento `Traded` via logs; ver ADR `2026-09-15_whirlpool-traded-ingest.md`.  
+Position: account 216 B + PDA `["position", mint]`; ver ADR `2026-09-15_whirlpool-position-decode.md`.  
+Alerts: `dedup_hour` UTC + Telegram dry-run; ver ADR `2026-09-15_watcher-alerts.md`.
 
 ---
 
@@ -67,8 +71,8 @@ Swaps: evento `Traded` via logs; ver ADR `2026-09-15_whirlpool-traded-ingest.md`
 
 ```
 Padrão geral:     modular monolith por processo
-Separação:        math / db / indexer / scripts
-Testes:           Vitest (math + invariantes DB + fixture de ticks)
+Separação:        math / db / indexer / analyzer / watcher / scripts
+Testes:           Vitest (math + invariantes DB + fixtures ticks/positions + watcher)
 ```
 
 | Processo | Privilegio | Papel |

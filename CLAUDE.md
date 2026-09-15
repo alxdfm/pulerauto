@@ -85,11 +85,13 @@ docs/
   sessions/
     latest.md                ← contexto da última sessão (fallback sem MCP)
 migrations/                  ← SQL Timescale
-fixtures/                    ← snapshots on-chain para testes offline
+fixtures/                    ← snapshots on-chain / P&L sintético para testes offline
 src/
-  math/                      ← primitivas + swap-segments + fee-capture
+  math/                      ← primitivas + swap-segments + fee-capture + position P&L
   db/                        ← client, migrate, invariantes
-  indexer/                   ← Whirlpool decode, ticks, swaps
+  indexer/                   ← Whirlpool decode, ticks, swaps, Position
+  analyzer/                  ← position_snapshots / P&L
+  watcher/                   ← alertas (histerese + dedup)
   scripts/
 scripts/
   onboarding.sh              ← perguntas de setup inicial do projeto
