@@ -42,11 +42,14 @@ describe('decodeDynamicTickArray', () => {
     for (let i = 0; i < 16; i++) {
       buf[o + i] = Number((gross >> BigInt(8 * i)) & 0xffn)
     }
+    // feeGrowthOutsideA/B left zero; rewards zero
 
     const ticks = decodeDynamicTickArray(buf, 4)
     expect(ticks).toHaveLength(1)
     expect(ticks[0]!.tickIndex).toBe(slot * 4)
     expect(ticks[0]!.liquidityNet).toBe(net)
     expect(ticks[0]!.liquidityGross).toBe(gross)
+    expect(ticks[0]!.feeGrowthOutsideA).toBe(0n)
+    expect(ticks[0]!.feeGrowthOutsideB).toBe(0n)
   })
 })

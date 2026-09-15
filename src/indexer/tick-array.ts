@@ -16,6 +16,8 @@ export type DecodedTick = {
   initialized: boolean
   liquidityNet: bigint
   liquidityGross: bigint
+  feeGrowthOutsideA: bigint
+  feeGrowthOutsideB: bigint
 }
 
 export function tickArrayStartIndex(
@@ -61,7 +63,11 @@ export function decodeTickArray(
     o += 16
     const liquidityGross = readU128(data, o)
     o += 16
-    o += 16 + 16 + 48 // fee growth + rewards
+    const feeGrowthOutsideA = readU128(data, o)
+    o += 16
+    const feeGrowthOutsideB = readU128(data, o)
+    o += 16
+    o += 48 // rewards
     const consumed = 1 + 16 + 16 + 16 + 16 + 48
     if (consumed < TICK_SIZE) o += TICK_SIZE - consumed
 
@@ -72,6 +78,8 @@ export function decodeTickArray(
         initialized,
         liquidityNet,
         liquidityGross,
+        feeGrowthOutsideA,
+        feeGrowthOutsideB,
       })
     }
   }

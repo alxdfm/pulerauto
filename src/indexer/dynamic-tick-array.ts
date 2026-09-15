@@ -58,12 +58,18 @@ export function decodeDynamicTickArray(
     o += 16
     const liquidityGross = readU128(data, o)
     o += 16
-    o += 16 + 16 + 48 // fee growth + rewards
+    const feeGrowthOutsideA = readU128(data, o)
+    o += 16
+    const feeGrowthOutsideB = readU128(data, o)
+    o += 16
+    o += 48 // rewards
     ticks.push({
       tickIndex: startTickIndex + i * tickSpacing,
       initialized: true,
       liquidityNet,
       liquidityGross,
+      feeGrowthOutsideA,
+      feeGrowthOutsideB,
     })
   }
 

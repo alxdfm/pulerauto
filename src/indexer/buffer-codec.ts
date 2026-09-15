@@ -20,3 +20,12 @@ export function readI128(buf: Buffer, offset: number): bigint {
   }
   return result
 }
+
+export function readU64(buf: Buffer, offset: number): bigint {
+  if (offset + 8 > buf.length) {
+    throw new Error(
+      `readU64: need 8 bytes at ${offset}, buffer length ${buf.length}`,
+    )
+  }
+  return buf.readBigUInt64LE(offset)
+}
