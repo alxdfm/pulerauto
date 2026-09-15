@@ -1,0 +1,42 @@
+# O agente NÃO deve ler estes caminhos ao fazer buscas
+# Adicione tudo que gera ruído sem valor para o código
+
+# Deps
+node_modules/
+.venv/
+__pycache__/
+
+# Build e artifacts
+dist/
+build/
+.next/
+out/
+*.min.js
+*.min.css
+*.bundle.js
+
+# Locks (raramente úteis para o agente)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+uv.lock
+Cargo.lock
+
+# Gerados automaticamente
+*.d.ts.map
+*.js.map
+
+# Assets binários
+*.png
+*.jpg
+*.svg
+*.ico
+*.woff
+*.woff2
+
+# Dados de teste grandes
+fixtures/large/
+*.sql.gz
+
+# Zip do skeleton (já aplicado)
+project-skeleton.zip
