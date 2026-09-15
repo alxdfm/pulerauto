@@ -1,6 +1,6 @@
 /** Tick ↔ price conventions (spec §1). Solana Orca uses same 1.0001^i tick space. */
 
-const LN_1_0001 = Math.log(1.0001)
+export const LN_1_0001 = Math.log(1.0001)
 
 /** Price from tick index: p = 1.0001^i */
 export function priceFromTick(tick: number): number {

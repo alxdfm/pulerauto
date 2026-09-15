@@ -42,4 +42,4 @@ Snapshot de `pool_states` na Fase 0. Tick arrays on-chain completos ficam como f
 
 ## Revisão futura
 
-Quando 0.D.3 (tick events reais) for prioridade — avaliar `@orca-so/whirlpools-sdk` ou decode de TickArray PDA.
+Tick arrays Fixed + Dynamic indexados (ADR `2026-09-15_dynamic-tick-array.md`). Manter decoder manual; SDK Orca só se layout mudar de forma recorrente.

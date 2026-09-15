@@ -17,7 +17,7 @@
 
 ## Epic 0 — Bootstrap + Fase 0
 
-**Status (2026-09-15):** parcialmente completo.
+**Status (2026-09-15):** completo (L on-chain exata).
 
 | Item | Status |
 |------|--------|
@@ -25,19 +25,24 @@
 | 0.B Schema + seed Orca SOL/USDC | done (`Czfq3x...`) |
 | 0.C Math mínimo + testes | done |
 | 0.D.1 Snapshot pool_states live | done |
-| 0.D.3–4 Tick arrays on-chain | **pendente** (checkpoint sintético valida pipeline) |
-| 0.D.5 Invariantes 1–4 | done (com checkpoint sintético) |
+| 0.D.3–4 Tick arrays on-chain | **done** (Fixed + Dynamic; fixture offline) |
+| 0.D.5 Invariantes 1–3 (L) | done on-chain; sintético permanece só em unit tests |
 | 0.D.2 Swaps ingest | pendente (Fase 1) |
 
-**Done quando:** tick arrays reais + L reconstrói sem sintético; invariantes em janela ≥24h.
+**Done quando:** tick arrays reais + L reconstrói sem sintético; invariantes de liquidez em checkpoint on-chain.
 
 ---
 
 ## Epic 1 — Segmentação multi-tick + fee capture
 
-**Status:** math + tabela `swap_segments` iniciados; indexer de swaps ainda não.
+**Status (2026-09-15):** pipeline done; invariante 5 = 100% no conjunto indexado.
 
-**Done:** `Σ fee_seg = fee_amount` em **100%** dos swaps de 30 dias.
+**Done:** `Σ fee_seg = fee_amount` em **100%** dos swaps presentes na janela de 30d (gate SQL).  
+Backfill contínuo de 30 dias de mercado no pool piloto exige RPC com rate limit alto (`pnpm swaps:backfill --hours 720`).
+
+- Decoder `Traded` + `src/indexer/index-swaps.ts`
+- Math `src/math/swap-segments.ts` + `allocateFeeSegments`
+- `pnpm swaps:check` → `sum_fee_seg_equals_fee_amount`
 
 ---
 
@@ -103,11 +108,9 @@
 ## Ordem de implementação sugerida (próximas sessões)
 
 ```
-1. Epic 0.A  bootstrap TS + Docker Timescale
-2. Epic 0.B  migrations + seed Orca SOL/USDC
-3. Epic 0.C  math mínimo + testes
-4. Epic 0.D  indexer + invariantes
-5. Fechar Fase 0 → só então Epic 1
+1. Epic 0 fechado (L exata Fixed+Dynamic)
+2. Epic 1 — swaps → swap_segments (Σ fee_seg = fee_amount, 30d)
+3. Epic 2 — positions + P&L
 ```
 
 ---

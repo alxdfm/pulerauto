@@ -2,8 +2,9 @@ import { Connection, PublicKey } from '@solana/web3.js'
 import type pg from 'pg'
 import type { Db } from '../db/client.js'
 import { reconstructActiveLiquidity } from '../math/liquidity.js'
+import { fetchWhirlpoolTicks } from './fetch-whirlpool-ticks.js'
+import type { DecodedTick } from './tick-array.js'
 import { decodeWhirlpool } from './whirlpool-decode.js'
-import { fetchWhirlpoolTicks, type DecodedTick } from './tick-array.js'
 
 export type IndexedPoolState = {
   poolId: number
@@ -136,13 +137,12 @@ export async function writeOnChainTickCheckpoint(
 ): Promise<{
   tickCount: number
   reconstructed: bigint
+  sumNet: bigint
   matches: boolean
 }> {
   const ticks = await fetchWhirlpoolTicks({
     rpcUrl: opts.rpcUrl,
     poolAddress: opts.poolAddress,
-    currentTick: opts.currentTick,
-    tickSpacing: opts.tickSpacing,
   })
 
   const ts = new Date()
@@ -176,7 +176,10 @@ export async function writeOnChainTickCheckpoint(
   return {
     tickCount: ticks.length,
     reconstructed: recon.activeLiquidity,
-    matches: recon.activeLiquidity === opts.expectedLiquidity,
+    sumNet: recon.sumNet,
+    matches:
+      recon.sumNet === 0n &&
+      recon.activeLiquidity === opts.expectedLiquidity,
   }
 }
 

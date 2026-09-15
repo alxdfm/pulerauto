@@ -18,7 +18,10 @@
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:seed": "tsx src/scripts/seed.ts",
     "invariants": "tsx src/scripts/check-invariants.ts",
-    "indexer": "tsx src/indexer/run.ts"
+    "indexer": "tsx src/indexer/run.ts",
+    "swaps:backfill": "tsx src/scripts/backfill-swaps.ts",
+    "swaps:check": "tsx src/scripts/check-fee-segments.ts",
+    "ticks:capture-fixture": "tsx src/scripts/capture-tick-fixture.ts"
   },
   "dependencies": {
     "@solana/web3.js": "^1.99.0",

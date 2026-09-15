@@ -1,24 +1,22 @@
 # Última Sessão — Contexto Persistido
 
 **Última atualização:** 2026-09-15  
-**Sessão:** Epic 0 + início Fase 1 (execução)
+**Sessão:** Fechar Epic 0.D + Epic 1 (swaps/segments)
 
 ---
 
 ## O que foi feito
 
-- Bootstrap + indexer Orca + testes
-- **Code review fixes:** buffer-codec compartilhado, slot atômico, checkpoint batch+tx,
-  catch gPA explícito, fee-capture sem campo morto, Db via `createDb`, `runScript`,
-  invariantes fatiados, fee_growth como check real
+- **Epic 0.D:** causa do gap de L = DynamicTickArrays omitidos; decoder + gPA dual; fixture offline; L exata; WARN removido
+- **Epic 1:** decoder `Traded`, backfill com cursor, `swap_segments`, invariante Σ fee_seg; gate 100% no conjunto indexado
 
 ---
 
 ## Estado
 
 ```
-Funcionando:     DB, math, snapshot pool_states, ticks no DB, testes
-Em progresso:    fechar delta L exato; indexar swaps → segments
+Funcionando:     pool_states + ticks Fixed/Dynamic, L exacta, swaps→segments, gate fee
+Em progresso:    soak 30d de mercado (RPC rate limit; usar publicnode/pago)
 Bloqueado:       nada crítico
 ```
 
@@ -26,9 +24,9 @@ Bloqueado:       nada crítico
 
 ## Próximos passos
 
-1. Investigar delta L (SDK Orca / fixture de slot único)
-2. Indexar swaps do pool + `swap_segments` (Σ fee_seg = fee_amount)
-3. Fase 2: positions + P&L
+1. Soak `pnpm swaps:backfill --hours 720` em RPC com quota
+2. Epic 2: positions + P&L decomposto
+3. Indexar `tick_liquidity_events` contínuos (opcional para L histórica)
 
 ---
 
@@ -40,4 +38,6 @@ docker compose up -d
 ./node_modules/.bin/vitest run
 ./node_modules/.bin/tsx src/indexer/run.ts
 ./node_modules/.bin/tsx src/scripts/check-invariants.ts
+SOLANA_RPC_URL=https://solana.publicnode.com pnpm swaps:backfill --max 100 --delay-ms 600
+pnpm swaps:check
 ```

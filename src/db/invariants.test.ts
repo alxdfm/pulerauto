@@ -45,6 +45,19 @@ describe.runIf(hasDb)('db invariants (synthetic)', () => {
     expect(byName.l_active_matches_pool_state?.ok).toBe(true)
     expect(byName.sum_liquidity_net_zero?.ok).toBe(true)
     expect(byName.gross_ge_abs_net?.ok).toBe(true)
-    // fee_growth uses full pool history (may include prior live samples)
+
+    await db.withClient(async (client) => {
+      await client.query(
+        `DELETE FROM tick_liquidity_checkpoints
+         WHERE pool_id = $1
+           AND liquidity_net::text IN ($2, $3)`,
+        [poolId, L.toString(), (-L).toString()],
+      )
+      await client.query(
+        `DELETE FROM pool_states
+         WHERE pool_id = $1 AND liquidity::text = $2 AND block_or_slot = 1`,
+        [poolId, L.toString()],
+      )
+    })
   })
 })

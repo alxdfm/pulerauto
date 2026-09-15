@@ -159,8 +159,8 @@ async function feeGrowthCheck(
   }>(
     `WITH ordered AS (
        SELECT fee_growth_global0, fee_growth_global1,
-              LAG(fee_growth_global0) OVER (ORDER BY ts, block_or_slot) AS prev0,
-              LAG(fee_growth_global1) OVER (ORDER BY ts, block_or_slot) AS prev1
+              LAG(fee_growth_global0) OVER (ORDER BY block_or_slot, ts) AS prev0,
+              LAG(fee_growth_global1) OVER (ORDER BY block_or_slot, ts) AS prev1
        FROM pool_states WHERE pool_id = $1
      )
      SELECT EXISTS (
@@ -189,9 +189,57 @@ async function feeGrowthCheck(
   }
 }
 
+async function feeSegReconcileCheck(
+  client: pg.PoolClient,
+  poolId: number,
+  windowDays: number,
+): Promise<InvariantCheck> {
+  const { rows } = await client.query<{
+    swap_count: string
+    bad_count: string
+  }>(
+    `WITH windowed AS (
+       SELECT s.pool_id, s.ts, s.tx_ref, s.event_path, s.fee_amount
+       FROM swaps s
+       WHERE s.pool_id = $1
+         AND s.ts >= now() - ($2::text || ' days')::interval
+         AND s.fee_amount IS NOT NULL
+     ),
+     summed AS (
+       SELECT w.pool_id, w.ts, w.tx_ref, w.event_path, w.fee_amount,
+              COALESCE(SUM(seg.fee_seg), 0) AS fee_seg_sum
+       FROM windowed w
+       LEFT JOIN swap_segments seg
+         ON seg.pool_id = w.pool_id
+        AND seg.ts = w.ts
+        AND seg.tx_ref = w.tx_ref
+        AND seg.event_path = w.event_path
+       GROUP BY w.pool_id, w.ts, w.tx_ref, w.event_path, w.fee_amount
+     )
+     SELECT
+       COUNT(*)::text AS swap_count,
+       COUNT(*) FILTER (WHERE fee_seg_sum <> fee_amount)::text AS bad_count
+     FROM summed`,
+    [poolId, String(windowDays)],
+  )
+
+  const swapCount = Number(rows[0]?.swap_count ?? 0)
+  const badCount = Number(rows[0]?.bad_count ?? 0)
+  const ok = swapCount > 0 && badCount === 0
+  return {
+    name: 'sum_fee_seg_equals_fee_amount',
+    ok,
+    detail:
+      swapCount === 0
+        ? `no swaps in last ${windowDays}d`
+        : `swaps=${swapCount} mismatched=${badCount} window=${windowDays}d`,
+  }
+}
+
 export async function checkPoolInvariants(
   db: Db,
   poolId: number,
+  opts?: { feeSegWindowDays?: number },
 ): Promise<InvariantReport> {
   return db.withClient(async (client) => {
     const state = await loadLatestPoolState(client, poolId)
@@ -214,6 +262,22 @@ export async function checkPoolInvariants(
       ...liquidityChecks(ticks, state.tick, BigInt(state.liquidity)),
       await feeGrowthCheck(client, poolId),
     ]
+    if (opts?.feeSegWindowDays !== undefined) {
+      checks.push(
+        await feeSegReconcileCheck(client, poolId, opts.feeSegWindowDays),
+      )
+    }
     return { poolId, ok: checks.every((c) => c.ok), checks }
   })
+}
+
+/** Spec §15 invariant 5 over a rolling window (Epic 1 gate). */
+export async function checkFeeSegInvariant(
+  db: Db,
+  poolId: number,
+  windowDays = 30,
+): Promise<InvariantCheck> {
+  return db.withClient((client) =>
+    feeSegReconcileCheck(client, poolId, windowDays),
+  )
 }

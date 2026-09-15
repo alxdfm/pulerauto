@@ -55,15 +55,26 @@ await runScript(async () => {
   console.log('tick checkpoint:', {
     tickCount: tickResult.tickCount,
     reconstructed: tickResult.reconstructed.toString(),
+    sumNet: tickResult.sumNet.toString(),
     matches: tickResult.matches,
   })
 
-  const report = await checkPoolInvariants(db, poolId)
-  console.log(JSON.stringify(report, null, 2))
   if (!tickResult.matches) {
-    console.warn(
-      'WARN: on-chain L reconstruction does not match exactly yet (known gap).',
+    throw new Error(
+      `on-chain L reconstruction mismatch: reconstructed=${tickResult.reconstructed} sumNet=${tickResult.sumNet} expected=${snap.liquidity}`,
     )
   }
-  if (tickResult.tickCount === 0) process.exitCode = 1
+
+  const report = await checkPoolInvariants(db, poolId)
+  console.log(JSON.stringify(report, null, 2))
+  const liquidityOk = report.checks
+    .filter((c) =>
+      [
+        'sum_liquidity_net_zero',
+        'l_active_matches_pool_state',
+        'gross_ge_abs_net',
+      ].includes(c.name),
+    )
+    .every((c) => c.ok)
+  if (!liquidityOk || tickResult.tickCount === 0) process.exitCode = 1
 }, () => db.close())

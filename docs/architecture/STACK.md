@@ -56,6 +56,8 @@ Pool piloto:    Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE (Orca SOL/USDC ts=4
 |--------|--------|-----------------|
 | @solana/web3.js | 1.x | Decoder alinhado ao layout atual; kit v2 depois |
 
+Tick arrays: FixedTickArray (9988) + DynamicTickArray (148–10004); ver ADR `2026-09-15_dynamic-tick-array.md`.
+
 ---
 
 ## Padrões de arquitetura

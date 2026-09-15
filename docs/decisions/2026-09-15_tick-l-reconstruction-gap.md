@@ -1,14 +1,14 @@
 # Decisão: checkpoint on-chain com gap conhecido na reconstrução de L
 
 **Data:** 2026-09-15  
-**Status:** aceita (temporária)  
+**Status:** fechada  
 **Autor:** Epic 0.D
 
 ---
 
 ## Contexto
 
-O critério da Fase 0 exige `L_ativa` reconstruída **exatamente** igual a `pool_states.liquidity`. Com getProgramAccounts de todos os TickArrays (~225) do pool SOL/USDC, a reconstrução fica a um delta constante `39153215` (~6e-8 relativo) e `sum(net) ≠ 0` (~-1.4e10).
+O critério da Fase 0 exige `L_ativa` reconstruída **exatamente** igual a `pool_states.liquidity`. Com getProgramAccounts só de FixedTickArray (`dataSize=9988`), a reconstrução ficava a um delta constante `39153215` e `sum(net) ≠ 0`.
 
 ---
 
@@ -22,24 +22,22 @@ O critério da Fase 0 exige `L_ativa` reconstruída **exatamente** igual a `pool
 
 ---
 
-## Decisão tomada
+## Decisão tomada (temporária, 2026-09-15)
 
 > **Seguir com ticks on-chain via gPA; manter teste sintético para o pipeline de invariantes; tratar delta exato como bug aberto 0.D.**
 
-Hipóteses: layout/edge case no decode, inconsistência de slot entre contas, ou regra de cruzamento de tick. Investigar com SDK Orca ou fixture de slot único.
+---
+
+## Resolução
+
+Causa raiz: o pool piloto também tem **DynamicTickArray** (whirlpool @ offset 12; tamanho variável 148–10004). O filtro `dataSize=9988` ignorava ~137 arrays; nets incompletos → `sumNet ≠ 0` e L errada.
+
+Correção: decoder Borsh de DynamicTick (`Uninitialized` | `Initialized`) + gPA dual (fixed + dynamic); gate de consistência = `sumNet === 0` e `L` exata. Fixture offline em `fixtures/orca-sol-usdc-tick-snapshot.json`.
 
 ---
 
 ## Consequências
 
-**Positivas:** indexer live de `pool_states` + ticks reais no DB.
+**Positivas:** invariantes 1–3 passam no path on-chain; WARN removido do indexer.
 
-**Negativas:** Fase 0 não está “done” pelo critério literal da spec.
-
-**Impacto:** `src/indexer/tick-array.ts`, WORKPLAN Epic 0.
-
----
-
-## Revisão futura
-
-Assim que `reconstructed === liquidity` e `sumNet === 0` em slot consistente — fechar 0.D e remover esta decisão temporária.
+**Impacto:** `src/indexer/dynamic-tick-array.ts`, `src/indexer/fetch-whirlpool-ticks.ts`.
