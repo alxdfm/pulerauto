@@ -83,7 +83,7 @@ describe('live Orca position fixture reconcile', () => {
       const positionId = await db.withClient(async (c) => {
         await c.query('BEGIN')
         try {
-          const id = await upsertOpenPosition(c, {
+          const upserted = await upsertOpenPosition(c, {
             walletId,
             poolId,
             position: {
@@ -108,6 +108,7 @@ describe('live Orca position fixture reconcile', () => {
             entryAmount1: amounts.amount1,
             entryValueUsd: valueUsd.toFixed(6),
           })
+          const id = upserted.positionId
           await insertPositionEvent(c, {
             positionId: id,
             ts: new Date(fixture.capturedAt),

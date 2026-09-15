@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { computePositionSnapshot } from './position-snapshot.js'
+import {
+  computePositionSnapshot,
+  feesCollectedToUsd,
+} from './position-snapshot.js'
 import { sqrtPriceX64AtTick } from '../math/sqrt-price.js'
 
 describe('computePositionSnapshot', () => {
@@ -54,5 +57,17 @@ describe('computePositionSnapshot', () => {
     })
     expect(snap.inRange).toBe(false)
     expect(snap.deltaToken0).toBeGreaterThan(0)
+  })
+
+  it('feesCollectedToUsd prices each token separately', () => {
+    // 1 SOL (9 dec) at $100 + 50 USDC (6 dec)
+    const usd = feesCollectedToUsd({
+      fee0: 1_000_000_000n,
+      fee1: 50_000_000n,
+      price: 100,
+      decimals0: 9,
+      decimals1: 6,
+    })
+    expect(usd).toBe(150)
   })
 })

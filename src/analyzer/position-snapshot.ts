@@ -3,6 +3,7 @@
  * Verb: analyze — metrics from DB state, no RPC required for synthetic path.
  */
 
+import type pg from 'pg'
 import type { Db } from '../db/client.js'
 import {
   feeGrowthInside,
@@ -62,6 +63,21 @@ export type ComputedSnapshot = {
   cumTimeInRange: number
 }
 
+/** Convert collected fee raw units to USD (token1 quote). */
+export function feesCollectedToUsd(opts: {
+  fee0: bigint | number
+  fee1: bigint | number
+  price: number
+  decimals0: number
+  decimals1: number
+}): number {
+  const scale0 = 10 ** opts.decimals0
+  const scale1 = 10 ** opts.decimals1
+  return (
+    (Number(opts.fee0) / scale0) * opts.price + Number(opts.fee1) / scale1
+  )
+}
+
 export function computePositionSnapshot(
   input: SnapshotComputeInput,
 ): ComputedSnapshot {
@@ -85,8 +101,6 @@ export function computePositionSnapshot(
       : priceFromSqrtPriceX(sqrtCurrent, 64, input.decimals0, input.decimals1)
   const pa = priceFromTick(input.tickLower)
   const pb = priceFromTick(input.tickUpper)
-  // Adjust tick prices for decimals when using raw 1.0001^tick (SOL/USDC).
-  // For synthetic tests, callers pass human `price` and entry amounts already scaled.
   const valueUsd = a0 * price + a1
   const hodlValueUsd = hodlValueQuote(
     input.entryAmount0,
@@ -165,53 +179,74 @@ export function computePositionSnapshot(
 }
 
 export async function writePositionSnapshot(
-  db: Db,
+  client: pg.PoolClient,
   snap: ComputedSnapshot,
   ts: Date,
 ): Promise<void> {
-  await db.withClient(async (client) => {
-    await client.query(
-      `INSERT INTO position_snapshots (
-         position_id, ts, price, in_range,
-         value_usd, hodl_value_usd, fees_earned_usd, fees_pending_usd,
-         rewards_usd, costs_usd, funding_usd, divergence_usd, pnl_vs_hodl_usd,
-         delta_token0, hedge_size, cum_time_in_range
-       ) VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NULL,$15
-       )
-       ON CONFLICT (position_id, ts) DO UPDATE SET
-         price = EXCLUDED.price,
-         in_range = EXCLUDED.in_range,
-         value_usd = EXCLUDED.value_usd,
-         hodl_value_usd = EXCLUDED.hodl_value_usd,
-         fees_earned_usd = EXCLUDED.fees_earned_usd,
-         fees_pending_usd = EXCLUDED.fees_pending_usd,
-         rewards_usd = EXCLUDED.rewards_usd,
-         costs_usd = EXCLUDED.costs_usd,
-         funding_usd = EXCLUDED.funding_usd,
-         divergence_usd = EXCLUDED.divergence_usd,
-         pnl_vs_hodl_usd = EXCLUDED.pnl_vs_hodl_usd,
-         delta_token0 = EXCLUDED.delta_token0,
-         cum_time_in_range = EXCLUDED.cum_time_in_range`,
-      [
-        snap.positionId,
-        ts,
-        snap.price,
-        snap.inRange,
-        snap.valueUsd.toFixed(6),
-        snap.hodlValueUsd.toFixed(6),
-        snap.feesEarnedUsd.toFixed(6),
-        snap.feesPendingUsd.toFixed(6),
-        snap.rewardsUsd.toFixed(6),
-        snap.costsUsd.toFixed(6),
-        snap.fundingUsd.toFixed(6),
-        snap.divergenceUsd.toFixed(6),
-        snap.pnlVsHodlUsd.toFixed(6),
-        snap.deltaToken0.toFixed(18),
-        snap.cumTimeInRange,
-      ],
-    )
-  })
+  await client.query(
+    `INSERT INTO position_snapshots (
+       position_id, ts, price, in_range,
+       value_usd, hodl_value_usd, fees_earned_usd, fees_pending_usd,
+       rewards_usd, costs_usd, funding_usd, divergence_usd, pnl_vs_hodl_usd,
+       delta_token0, hedge_size, cum_time_in_range
+     ) VALUES (
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,NULL,$15
+     )
+     ON CONFLICT (position_id, ts) DO UPDATE SET
+       price = EXCLUDED.price,
+       in_range = EXCLUDED.in_range,
+       value_usd = EXCLUDED.value_usd,
+       hodl_value_usd = EXCLUDED.hodl_value_usd,
+       fees_earned_usd = EXCLUDED.fees_earned_usd,
+       fees_pending_usd = EXCLUDED.fees_pending_usd,
+       rewards_usd = EXCLUDED.rewards_usd,
+       costs_usd = EXCLUDED.costs_usd,
+       funding_usd = EXCLUDED.funding_usd,
+       divergence_usd = EXCLUDED.divergence_usd,
+       pnl_vs_hodl_usd = EXCLUDED.pnl_vs_hodl_usd,
+       delta_token0 = EXCLUDED.delta_token0,
+       cum_time_in_range = EXCLUDED.cum_time_in_range`,
+    [
+      snap.positionId,
+      ts,
+      snap.price,
+      snap.inRange,
+      snap.valueUsd.toFixed(6),
+      snap.hodlValueUsd.toFixed(6),
+      snap.feesEarnedUsd.toFixed(6),
+      snap.feesPendingUsd.toFixed(6),
+      snap.rewardsUsd.toFixed(6),
+      snap.costsUsd.toFixed(6),
+      snap.fundingUsd.toFixed(6),
+      snap.divergenceUsd.toFixed(6),
+      snap.pnlVsHodlUsd.toFixed(6),
+      snap.deltaToken0.toFixed(18),
+      snap.cumTimeInRange,
+    ],
+  )
+}
+
+async function loadTickOutside(
+  client: pg.PoolClient,
+  poolId: number,
+  tickIndex: number,
+): Promise<{ outside0: bigint; outside1: bigint }> {
+  const { rows } = await client.query<{
+    fee_growth_outside0: string
+    fee_growth_outside1: string
+  }>(
+    `SELECT fee_growth_outside0::text, fee_growth_outside1::text
+     FROM tick_liquidity_checkpoints
+     WHERE pool_id = $1 AND tick_index = $2
+     ORDER BY ts DESC LIMIT 1`,
+    [poolId, tickIndex],
+  )
+  const row = rows[0]
+  if (!row) return { outside0: 0n, outside1: 0n }
+  return {
+    outside0: BigInt(row.fee_growth_outside0),
+    outside1: BigInt(row.fee_growth_outside1),
+  }
 }
 
 export async function analyzePositionFromDb(
@@ -229,16 +264,21 @@ export async function analyzePositionFromDb(
       entry_amount1: string
       entry_value_usd: string
       pool_id: string
+      fee_growth_checkpoint0: string
+      fee_growth_checkpoint1: string
     }>(
       `SELECT tick_lower, tick_upper, liquidity::text, entry_price::text,
               entry_amount0::text, entry_amount1::text, entry_value_usd::text,
-              pool_id::text
+              pool_id::text,
+              COALESCE(fee_growth_checkpoint0, 0)::text AS fee_growth_checkpoint0,
+              COALESCE(fee_growth_checkpoint1, 0)::text AS fee_growth_checkpoint1
        FROM positions WHERE id = $1`,
       [positionId],
     )
     const pos = posRows[0]
     if (!pos) return null
 
+    const poolId = Number(pos.pool_id)
     const { rows: stateRows } = await client.query<{
       sqrt_price: string
       tick: number
@@ -248,13 +288,17 @@ export async function analyzePositionFromDb(
       `SELECT sqrt_price::text, tick, fee_growth_global0::text, fee_growth_global1::text
        FROM pool_states WHERE pool_id = $1
        ORDER BY ts DESC, block_or_slot DESC LIMIT 1`,
-      [Number(pos.pool_id)],
+      [poolId],
     )
     const state = stateRows[0]
     if (!state) return null
 
-    const { rows: feeRows } = await client.query<{ fees: string }>(
-      `SELECT COALESCE(SUM(COALESCE(fee0,0) + COALESCE(fee1,0)), 0)::text AS fees
+    const { rows: feeRows } = await client.query<{
+      fee0: string
+      fee1: string
+    }>(
+      `SELECT COALESCE(SUM(COALESCE(fee0,0)), 0)::text AS fee0,
+              COALESCE(SUM(COALESCE(fee1,0)), 0)::text AS fee1
        FROM position_events WHERE position_id = $1 AND kind = 'collect'`,
       [positionId],
     )
@@ -273,6 +317,16 @@ export async function analyzePositionFromDb(
       opts.decimals0,
       opts.decimals1,
     )
+    const feesCollectedUsd = feesCollectedToUsd({
+      fee0: BigInt(feeRows[0]?.fee0 ?? '0'),
+      fee1: BigInt(feeRows[0]?.fee1 ?? '0'),
+      price,
+      decimals0: opts.decimals0,
+      decimals1: opts.decimals1,
+    })
+
+    const lowerOut = await loadTickOutside(client, poolId, pos.tick_lower)
+    const upperOut = await loadTickOutside(client, poolId, pos.tick_upper)
 
     const snap = computePositionSnapshot({
       positionId,
@@ -283,7 +337,7 @@ export async function analyzePositionFromDb(
       entryAmount0: Number(pos.entry_amount0) / scale0,
       entryAmount1: Number(pos.entry_amount1) / scale1,
       entryValueUsd: Number(pos.entry_value_usd),
-      feesCollectedUsd: Number(feeRows[0]?.fees ?? 0) / scale1,
+      feesCollectedUsd,
       costsUsd: Number(costRows[0]?.costs ?? 0),
       rewardsUsd: 0,
       fundingUsd: 0,
@@ -294,10 +348,16 @@ export async function analyzePositionFromDb(
       currentTick: state.tick,
       feeGrowthGlobal0: BigInt(state.fee_growth_global0),
       feeGrowthGlobal1: BigInt(state.fee_growth_global1),
+      feeGrowthOutsideLower0: lowerOut.outside0,
+      feeGrowthOutsideLower1: lowerOut.outside1,
+      feeGrowthOutsideUpper0: upperOut.outside0,
+      feeGrowthOutsideUpper1: upperOut.outside1,
+      feeGrowthCheckpoint0: BigInt(pos.fee_growth_checkpoint0),
+      feeGrowthCheckpoint1: BigInt(pos.fee_growth_checkpoint1),
       feeGrowthShift: 64,
     })
 
-    await writePositionSnapshot(db, snap, opts.ts ?? new Date())
+    await writePositionSnapshot(client, snap, opts.ts ?? new Date())
     return snap
   })
 }
