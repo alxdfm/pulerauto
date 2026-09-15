@@ -1,0 +1,14 @@
+---
+description: Conventional Commits without AI Co-authored-by trailers
+alwaysApply: true
+---
+
+# Git commits
+
+- Use Conventional Commits: `type(scope): description` in English, imperative, no trailing period
+- No commit body unless the user explicitly asks for one
+- **Never** add `Co-authored-by` trailers, including:
+  - `Co-authored-by: Cursor <cursoragent@cursor.com>`
+  - `Co-authored-by: Claude <...>` (any Claude / Anthropic variant)
+- If the IDE injects a Co-authored-by line, strip it before finishing the commit/push
+- After committing, verify with `git log -1 --format=%B` that no Co-authored-by remains

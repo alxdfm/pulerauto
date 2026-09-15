@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Strip AI Co-authored-by trailers injected by IDEs/agents.
+MSG_FILE="$1"
+[ -f "$MSG_FILE" ] || exit 0
+tmp="$(mktemp)"
+grep -viE '^Co-authored-by:[[:space:]]*(Cursor|Claude)\b' "$MSG_FILE" \
+  | grep -viE '^Co-authored-by:.*<(cursoragent@cursor\.com|.*claude|.*anthropic)' \
+  > "$tmp" || true
+# Also drop any remaining Co-authored-by from Cursor/Claude email patterns
+mv "$tmp" "$MSG_FILE"
