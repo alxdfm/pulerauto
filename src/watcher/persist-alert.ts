@@ -8,6 +8,7 @@ import { canEmitAlert } from './dedup.js'
 import type { LatchState } from './hysteresis.js'
 
 export type AlertSeverity = 'info' | 'warn' | 'action' | 'critical'
+export type DeliveryStatus = 'pending' | 'delivered' | 'failed' | 'dry_run'
 
 export type EmitAlertInput = {
   ruleId: number
@@ -29,13 +30,19 @@ export async function loadLatch(
   const { rows } = await client.query<{
     active: boolean
     since_at: Date | null
+    episode_fired: boolean
   }>(
-    `SELECT active, since_at FROM alert_rule_latches WHERE rule_id = $1`,
+    `SELECT active, since_at, COALESCE(episode_fired, FALSE) AS episode_fired
+     FROM alert_rule_latches WHERE rule_id = $1`,
     [ruleId],
   )
   const row = rows[0]
-  if (!row) return { active: false, sinceAt: null }
-  return { active: row.active, sinceAt: row.since_at }
+  if (!row) return { active: false, sinceAt: null, episodeFired: false }
+  return {
+    active: row.active,
+    sinceAt: row.since_at,
+    episodeFired: row.episode_fired,
+  }
 }
 
 export async function saveLatch(
@@ -44,13 +51,14 @@ export async function saveLatch(
   latch: LatchState,
 ): Promise<void> {
   await client.query(
-    `INSERT INTO alert_rule_latches (rule_id, active, since_at, updated_at)
-     VALUES ($1, $2, $3, now())
+    `INSERT INTO alert_rule_latches (rule_id, active, since_at, episode_fired, updated_at)
+     VALUES ($1, $2, $3, $4, now())
      ON CONFLICT (rule_id) DO UPDATE SET
        active = EXCLUDED.active,
        since_at = EXCLUDED.since_at,
+       episode_fired = EXCLUDED.episode_fired,
        updated_at = now()`,
-    [ruleId, latch.active, latch.sinceAt],
+    [ruleId, latch.active, latch.sinceAt, latch.episodeFired],
   )
 }
 
@@ -82,50 +90,76 @@ export function utcHourBucket(ts: Date): Date {
   )
 }
 
-export async function emitAlert(
-  db: Db,
+export async function emitAlertOnClient(
+  client: pg.PoolClient,
   input: EmitAlertInput,
 ): Promise<EmitAlertResult> {
   const ts = input.ts ?? new Date()
   const dedupHour = utcHourBucket(ts)
-  return db.withClient(async (client) => {
-    const last = await lastAlertAt(client, input.ruleId, input.dedupKey)
-    if (
-      !canEmitAlert({
-        lastAlertAt: last,
-        now: ts,
-        cooldownSec: input.cooldownSec,
-      })
-    ) {
-      return { emitted: false, reason: 'cooldown' }
-    }
+  const last = await lastAlertAt(client, input.ruleId, input.dedupKey)
+  if (
+    !canEmitAlert({
+      lastAlertAt: last,
+      now: ts,
+      cooldownSec: input.cooldownSec,
+    })
+  ) {
+    return { emitted: false, reason: 'cooldown' }
+  }
 
-    try {
-      const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO alerts (rule_id, ts, dedup_hour, severity, dedup_key, payload)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb)
-         RETURNING id::text`,
-        [
-          input.ruleId,
-          ts,
-          dedupHour,
-          input.severity,
-          input.dedupKey,
-          JSON.stringify(input.payload),
-        ],
-      )
-      return { emitted: true, alertId: Number(rows[0]!.id) }
-    } catch (err: unknown) {
-      const code =
-        err && typeof err === 'object' && 'code' in err
-          ? String((err as { code: unknown }).code)
-          : ''
-      if (code === '23505') {
-        return { emitted: false, reason: 'dedup_hour' }
-      }
-      throw err
+  try {
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO alerts (rule_id, ts, dedup_hour, severity, dedup_key, payload, delivery_status)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb, 'pending')
+       RETURNING id::text`,
+      [
+        input.ruleId,
+        ts,
+        dedupHour,
+        input.severity,
+        input.dedupKey,
+        JSON.stringify(input.payload),
+      ],
+    )
+    return { emitted: true, alertId: Number(rows[0]!.id) }
+  } catch (err: unknown) {
+    const code =
+      err && typeof err === 'object' && 'code' in err
+        ? String((err as { code: unknown }).code)
+        : ''
+    if (code === '23505') {
+      return { emitted: false, reason: 'dedup_hour' }
     }
-  })
+    throw err
+  }
+}
+
+export async function emitAlert(
+  db: Db,
+  input: EmitAlertInput,
+): Promise<EmitAlertResult> {
+  return db.withClient((client) => emitAlertOnClient(client, input))
+}
+
+export async function setAlertDeliveryStatusOnClient(
+  client: pg.PoolClient,
+  alertId: number,
+  status: DeliveryStatus,
+): Promise<void> {
+  await client.query(`UPDATE alerts SET delivery_status = $2 WHERE id = $1`, [
+    alertId,
+    status,
+  ])
+}
+
+export async function setAlertDeliveryStatus(
+  db: Db,
+  alertId: number,
+  status: DeliveryStatus,
+): Promise<void> {
+  await db.withClient((client) =>
+    setAlertDeliveryStatusOnClient(client, alertId, status),
+  )
 }
 
 export async function beatHeartbeat(

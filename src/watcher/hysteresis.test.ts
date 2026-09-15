@@ -8,15 +8,16 @@ import { buildDedupKey, canEmitAlert, withinCooldown } from './dedup.js'
 describe('hysteresis', () => {
   const t0 = new Date('2026-09-15T12:00:00Z')
 
-  it('arms then fires after minSec, then latches without re-fire', () => {
+  it('arms then fires after minSec; FIRED only via firedLatch', () => {
     const arm = evaluateBooleanHysteresis({
       conditionTrue: true,
       now: t0,
-      latch: { active: false, sinceAt: null },
+      latch: { active: false, sinceAt: null, episodeFired: false },
       minSec: 60,
     })
     expect(arm.shouldFire).toBe(false)
     expect(arm.nextLatch.active).toBe(true)
+    expect(arm.firedLatch).toBeNull()
 
     const early = evaluateBooleanHysteresis({
       conditionTrue: true,
@@ -33,12 +34,14 @@ describe('hysteresis', () => {
       minSec: 60,
     })
     expect(fire.shouldFire).toBe(true)
-    expect(alreadyFiredThisEpisode(fire.nextLatch)).toBe(true)
+    expect(fire.nextLatch.episodeFired).toBe(false)
+    expect(fire.firedLatch).not.toBeNull()
+    expect(alreadyFiredThisEpisode(fire.firedLatch!)).toBe(true)
 
     const again = evaluateBooleanHysteresis({
       conditionTrue: true,
       now: new Date(t0.getTime() + 120_000),
-      latch: fire.nextLatch,
+      latch: fire.firedLatch!,
       minSec: 60,
     })
     expect(again.shouldFire).toBe(false)
@@ -46,10 +49,34 @@ describe('hysteresis', () => {
     const clear = evaluateBooleanHysteresis({
       conditionTrue: false,
       now: new Date(t0.getTime() + 180_000),
-      latch: fire.nextLatch,
+      latch: fire.firedLatch!,
       minSec: 60,
     })
     expect(clear.nextLatch.active).toBe(false)
+    expect(clear.nextLatch.episodeFired).toBe(false)
+  })
+
+  it('keeps armed (not fired) when emit is deferred', () => {
+    const armed = {
+      active: true,
+      sinceAt: t0,
+      episodeFired: false,
+    }
+    const fire = evaluateBooleanHysteresis({
+      conditionTrue: true,
+      now: new Date(t0.getTime() + 60_000),
+      latch: armed,
+      minSec: 60,
+    })
+    // Simulate dedup reject: persist nextLatch (armed), not firedLatch
+    expect(fire.shouldFire).toBe(true)
+    const afterReject = evaluateBooleanHysteresis({
+      conditionTrue: true,
+      now: new Date(t0.getTime() + 120_000),
+      latch: fire.nextLatch,
+      minSec: 60,
+    })
+    expect(afterReject.shouldFire).toBe(true)
   })
 })
 
