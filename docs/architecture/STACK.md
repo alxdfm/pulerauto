@@ -1,6 +1,6 @@
 # Stack & Arquitetura
 
-> Atualizado: 2026-09-15 (Epics 0–3).
+> Atualizado: 2026-09-15 (Epics 0–4).
 
 ---
 
@@ -78,7 +78,7 @@ Testes:           Vitest (math + invariantes DB + fixtures ticks/positions + wat
 | Processo | Privilegio | Papel |
 |----------|------------|--------|
 | indexer  | read RPC + write DB | pool_states, ticks, swaps, swap_segments, positions |
-| analyzer | read DB + write métricas | position_snapshots; LVR/edge ainda não |
+| analyzer | read DB + write métricas | position_snapshots; pool_metrics_daily (edge/markout/regime) |
 | watcher  | read DB + write alerts | histerese, dedup, heartbeat → Telegram |
 | executor | signer isolado | Fase 7 |
 

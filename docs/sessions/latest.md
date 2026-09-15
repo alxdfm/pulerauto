@@ -1,38 +1,37 @@
 # Última Sessão — Contexto Persistido
 
 **Última atualização:** 2026-09-15  
-**Sessão:** Sync de docs pós Epic 2–3 + push; code review registrado como dívida
+**Sessão:** Qualidade (dívida Epic 2/3) + Epic 4 sinal + soaks kickoff
 
 ---
 
-## O que foi feito (histórico recente)
+## O que foi feito
 
-- **Epic 2:** positions schema/math/ingest/snapshots; fixtures sintético + Orca live
-- **Epic 3:** alert_rules/alerts, watcher histerese+dedup, Telegram dry-run
-- **Git:** commits pequenos (rule atualizada); push `master` → origin
-- **Soak swaps:** chunks até ~1151 swaps; gate fee **100%** (`mismatched=0`); span calendário ainda curto (~14 min) — profundidade 30d exige mais RPC
-- **Docs:** README / OVERVIEW / STACK / CLAUDE / WORKPLAN alinhados a Epics 0–3
+- **Soak tooling:** `pnpm swaps:span`, `pnpm alerts:dedup-check`; backfill 30d reiniciado (publicnode, chunks 100)
+- **Epic 2 debt closed:** nested client fix; collect USD; fee checkpoints/outside (`008`); whirlpool bind; mint idempotent; entry_* required on create; `nft_mint NOT NULL`
+- **Epic 3 debt closed:** FIRED after emit; `episode_fired`; `delivery_status`; single-client watch cycle (`009`)
+- **Epic 4:** math EdgeRatio/Markout/regime; `010_pool_metrics_daily`; `metrics:daily`, `ranking:weekly`, `markout:check`
 
 ---
 
 ## Estado
 
 ```
-Funcionando:     indexer, analyzer snapshots, watcher alerts
-Em progresso:    soak swaps 30d (RPC); soak alertas 7d zero-dup
+Funcionando:     indexer, analyzer snapshots+pool metrics, watcher, Epic 4 math
+Em progresso:    soak swaps → span ≥30d; soak alertas 7d (após watcher contínuo)
 Bloqueado:       nada crítico
-Dívida:          ver WORKPLAN Epic 2/3 (pending fees, latch→emit, pool bind, …)
-Próximo epic:    Epic 4 — edge_ratio, markout, regime
-                 (ou corrigir dívida Epic 2/3 antes)
+Dívida:          watcher edge_decay/markout_negative (follow-up)
+Próximo epic:    Epic 5 — backtest + walk-forward (após soak 30d)
 ```
 
 ---
 
 ## Próximos passos
 
-1. Continuar `pnpm swaps:backfill --hours 720` em RPC com quota até span ≥30d
-2. Corrigir dívida Epic 2/3 do code review **ou** Epic 4 (sinal)
-3. Rodar `watcher` 7d e validar zero duplicados; setar `TELEGRAM_*` se live
+1. Acompanhar `pnpm swaps:span 30` até `ok: true`
+2. `pnpm watcher` 7d + `pnpm alerts:dedup-check 7`
+3. Após span: `pnpm metrics:daily` + `pnpm ranking:weekly`
+4. Epic 5
 
 ---
 
@@ -41,13 +40,11 @@ Próximo epic:    Epic 4 — edge_ratio, markout, regime
 ```bash
 pnpm db:migrate
 pnpm test
-pnpm indexer
-pnpm swaps:check
-SOLANA_RPC_URL=https://solana.publicnode.com pnpm swaps:backfill --hours 720 --max 100 --delay-ms 400
-pnpm positions:capture-fixture
-pnpm positions:index --mint <nft> --wallet <addr>
-pnpm positions:snapshot --position <id>
-pnpm pnl:check --position <id>
-pnpm watcher:once
+pnpm swaps:span 30
+pnpm swaps:backfill --hours 720 --max 100 --delay-ms 400
+pnpm alerts:dedup-check 7
+pnpm metrics:daily --day YYYY-MM-DD
+pnpm ranking:weekly
+pnpm markout:check
 pnpm watcher
 ```

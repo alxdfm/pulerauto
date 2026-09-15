@@ -32,6 +32,11 @@ pnpm db:migrate
 pnpm test
 pnpm indexer
 pnpm swaps:check
+pnpm swaps:span
+pnpm alerts:dedup-check
+pnpm metrics:daily
+pnpm ranking:weekly
+pnpm markout:check
 pnpm watcher:once
 ```
 

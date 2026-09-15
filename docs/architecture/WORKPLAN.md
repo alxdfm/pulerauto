@@ -55,15 +55,9 @@
 **Done quando:** P&L bate UI do DEX **ao centavo**, inclusive através de um rebalance.  
 **Done (hoje):** migration §16; math amounts/V/feeGrowth/P&L; decoder Position; rebalance fecha/abre; `position_snapshots`; fixture sintético + posições live Orca reconciliadas ao centavo vs amounts on-chain.
 
-**Dívida conhecida (code review — não trata como fechado §13 completo):**
-- `analyzePositionFromDb` nested `withClient` (risco de deadlock no pool)
-- pending fees sem `feeGrowthOutside`/checkpoint persistidos → não confiar em `fees_pending_usd` do path DB
-- `SUM(fee0+fee1)/scale1` mistura tokens no collect
-- `positions:index` usa `pools ORDER BY id LIMIT 1` (ignora whirlpool da Position)
-- re-index gera `mint` events duplicados; `entry_*` no index live = mark atual
-- `UNIQUE (wallet_id, pool_id, nft_mint)` não cobre `nft_mint` NULL
+**Dívida conhecida (code review):** **fechada (2026-09-15)** — nested client, fee outside/checkpoint persistidos (`008`), collect USD por token, bind por whirlpool, mint idempotente + entry_* obrigatório no create, `nft_mint NOT NULL`. ADR: `2026-09-15_position-fee-entry.md`.
 
-- Schema: `migrations/006_positions.sql`
+- Schema: `migrations/006_positions.sql` + `008_position_fee_state.sql`
 - Math: `position-amounts`, `position-value`, `fee-growth-inside`, `position-pnl`
 - Indexer: `position-decode`, `persist-position`, `index-position`
 - Analyzer: `src/analyzer/position-snapshot.ts`
@@ -80,12 +74,9 @@
 **Done quando:** zero alertas duplicados em 7 dias de mercado real.  
 **Done (hoje):** `alert_rules`/`alerts` com dedup horário (`dedup_hour` UTC); latches de histerese; heartbeat; `pnpm watcher` / `watcher:once`; Telegram dry-run sem token.
 
-**Dívida conhecida (code review):**
-- latch `FIRED` persistido **antes** de `emitAlert` → episódio pode silenciar se cooldown/dedup rejeitar
-- thrash de `withClient` por regra; falha Telegram ignorada após insert
-- sentinel `since_at = epoch` para “já disparou” (preferir flag explícita)
+**Dívida conhecida (code review):** **fechada (2026-09-15)** — FIRED só após emit; `episode_fired`; `delivery_status`; um client por ciclo. ADR: `2026-09-15_watcher-latch-after-emit.md`. Soak 7d zero-dup ainda em calendário (`pnpm alerts:dedup-check`).
 
-- Schema: `migrations/007_alerts.sql`
+- Schema: `migrations/007_alerts.sql` + `009_alert_latch_fired.sql`
 - Watcher: `src/watcher/` (range_exit, range_proximity, data_gap)
 - ADR: `docs/decisions/2026-09-15_watcher-alerts.md`
 
@@ -93,14 +84,13 @@
 
 ## Epic 4 — Sinal: edge_ratio, markout, regime
 
-**Status:** não iniciado.
+**Status (2026-09-15):** math + `pool_metrics_daily` + ranking + markout fixture; soak 30d ainda em resume para σ estável.
 
-**Done quando:** ranking semanal reproduzível; markout com sinal validado em caso conhecido.
+**Done quando:** ranking semanal reproduzível; markout com sinal validado em caso conhecido.  
+**Done (hoje):** `src/math/{depth-v2,sigma-implied,edge-ratio,markout,regime,sigma-realized}`; migration `010_pool_metrics_daily.sql`; `metrics:daily` / `ranking:weekly` / `markout:check`; fixture `fixtures/markout-sign-cases.json`. Alertas `edge_decay`/`markout_negative` ainda não wired no watcher.
 
-- Métricas derivadas §17
-- Markout §7 (sinal sobre `amount0`)
-- Regime §11; filtros ER por quantil do par
-
+- Math + analyzer: `pool-metrics-daily.ts`, `weekly-ranking.ts`
+- ADR: `2026-09-15_epic4-sigma-sampling.md`
 ---
 
 ## Epic 5 — Backtest + walk-forward
@@ -141,9 +131,10 @@
 ## Ordem de implementação sugerida (próximas sessões)
 
 ```
-1. Soak Epic 1 — continuar backfill até span ≥30d (RPC com quota)
-2. Epic 4 — edge_ratio / markout / regime
-3. Soak de alertas 7d (zero duplicados) em mercado real
+1. Soak Epic 1 — backfill até span ≥30d (em andamento; pnpm swaps:span)
+2. Soak alertas 7d — pnpm watcher + alerts:dedup-check
+3. Epic 5 — backtest / walk-forward
+4. Wire watcher edge_decay / markout_negative (follow-up Epic 4)
 ```
 
 ---

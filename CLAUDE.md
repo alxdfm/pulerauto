@@ -104,7 +104,7 @@ Processos:
 | Processo | Status |
 |----------|--------|
 | `indexer` | ativo (`src/indexer/`) — pool_states, ticks Fixed/Dynamic, swaps/segments, positions |
-| `analyzer` | ativo (`src/analyzer/`) — position_snapshots / P&L; LVR/edge depois |
+| `analyzer` | ativo (`src/analyzer/`) — position_snapshots / P&L; pool_metrics_daily (edge/markout/regime) |
 | `watcher` | ativo (`src/watcher/`) — range_exit/proximity/data_gap, Telegram dry-run |
 | `executor` | previsto Fase 7 (`src/executor/`) |
 
