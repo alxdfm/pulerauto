@@ -2,7 +2,7 @@
 
 > Derivado da Parte IV de `lp-assistant-spec-v2.md`.  
 > Ordem fixa: **contabilidade → sinal → execução**.  
-> Atualizado: 2026-09-15
+> Atualizado: 2026-09-16
 
 ---
 
@@ -44,6 +44,7 @@
 - Math `src/math/swap-segments.ts` + `allocateFeeSegments`
 - Cursor `indexer_cursors` (`migrations/005_indexer_cursors.sql`)
 - `pnpm swaps:check` → `sum_fee_seg_equals_fee_amount`
+- `pnpm swaps:span` → gate calendário ≥30d + fee 100%
 - ADR: `docs/decisions/2026-09-15_whirlpool-traded-ingest.md`
 
 ---
@@ -55,13 +56,13 @@
 **Done quando:** P&L bate UI do DEX **ao centavo**, inclusive através de um rebalance.  
 **Done (hoje):** migration §16; math amounts/V/feeGrowth/P&L; decoder Position; rebalance fecha/abre; `position_snapshots`; fixture sintético + posições live Orca reconciliadas ao centavo vs amounts on-chain.
 
-**Dívida conhecida (code review):** **fechada (2026-09-15)** — nested client, fee outside/checkpoint persistidos (`008`), collect USD por token, bind por whirlpool, mint idempotente + entry_* obrigatório no create, `nft_mint NOT NULL`. ADR: `2026-09-15_position-fee-entry.md`.
+**Dívida conhecida (code review):** **fechada (2026-09-15)** — nested client, fee outside/checkpoint persistidos (`008` + `011` mint uidx parcial), collect USD por token, bind por whirlpool, mint idempotente + entry_* obrigatório no create, `nft_mint NOT NULL`. ADR: `2026-09-15_position-fee-entry.md`.
 
-- Schema: `migrations/006_positions.sql` + `008_position_fee_state.sql`
+- Schema: `migrations/006_positions.sql` + `008_position_fee_state.sql` + `011_position_events_mint_uidx.sql`
 - Math: `position-amounts`, `position-value`, `fee-growth-inside`, `position-pnl`
 - Indexer: `position-decode`, `persist-position`, `index-position`
 - Analyzer: `src/analyzer/position-snapshot.ts`
-- Scripts: `positions:index`, `positions:snapshot`, `positions:capture-fixture`, `pnl:check`
+- Scripts: `positions:index` (exige `--entry-*` na criação), `positions:snapshot`, `positions:capture-fixture`, `pnl:check`
 - ADR: `docs/decisions/2026-09-15_whirlpool-position-decode.md`
 - Fixtures: `fixtures/synthetic-rebalance-pnl.json`, `fixtures/orca-sol-usdc-positions.json`
 
@@ -74,11 +75,11 @@
 **Done quando:** zero alertas duplicados em 7 dias de mercado real.  
 **Done (hoje):** `alert_rules`/`alerts` com dedup horário (`dedup_hour` UTC); latches de histerese; heartbeat; `pnpm watcher` / `watcher:once`; Telegram dry-run sem token.
 
-**Dívida conhecida (code review):** **fechada (2026-09-15)** — FIRED só após emit; `episode_fired`; `delivery_status`; um client por ciclo. ADR: `2026-09-15_watcher-latch-after-emit.md`. Soak 7d zero-dup ainda em calendário (`pnpm alerts:dedup-check`).
+**Dívida conhecida (code review):** **fechada (2026-09-15)** — FIRED só após emit; `episode_fired`; `delivery_status`; DB checkout sem HTTP de canal. ADR: `2026-09-15_watcher-latch-after-emit.md`. Soak 7d zero-dup ainda em calendário (`pnpm alerts:dedup-check`).
 
 - Schema: `migrations/007_alerts.sql` + `009_alert_latch_fired.sql`
 - Watcher: `src/watcher/` (range_exit, range_proximity, data_gap)
-- ADR: `docs/decisions/2026-09-15_watcher-alerts.md`
+- ADR: `docs/decisions/2026-09-15_watcher-alerts.md` (+ latch-after-emit)
 
 ---
 
@@ -91,6 +92,8 @@
 
 - Math + analyzer: `pool-metrics-daily.ts`, `weekly-ranking.ts`
 - ADR: `2026-09-15_epic4-sigma-sampling.md`
+- Soak Epic 1 (`pnpm swaps:span`) ainda limita qualidade de `sigma_30d` / ER 90d
+
 ---
 
 ## Epic 5 — Backtest + walk-forward

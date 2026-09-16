@@ -1,6 +1,6 @@
 # Stack & Arquitetura
 
-> Atualizado: 2026-09-15 (Epics 0–4).
+> Atualizado: 2026-09-16 (Epics 0–4).
 
 ---
 
@@ -63,7 +63,10 @@ RPC tip:        mainnet-beta ok p/ getProgramAccounts;
 Tick arrays: FixedTickArray (9988) + DynamicTickArray (148–10004); ver ADR `2026-09-15_dynamic-tick-array.md`.  
 Swaps: evento `Traded` via logs; ver ADR `2026-09-15_whirlpool-traded-ingest.md`.  
 Position: account 216 B + PDA `["position", mint]`; ver ADR `2026-09-15_whirlpool-position-decode.md`.  
-Alerts: `dedup_hour` UTC + Telegram dry-run; ver ADR `2026-09-15_watcher-alerts.md`.
+Fee state / entry: checkpoints + entry_* no open; ver ADR `2026-09-15_position-fee-entry.md`.  
+Alerts: `dedup_hour` UTC + Telegram dry-run; ver ADR `2026-09-15_watcher-alerts.md`.  
+Latch: FIRED após emit + `episode_fired`; ver ADR `2026-09-15_watcher-latch-after-emit.md`.  
+Sinal: amostragem σ / Vol; ver ADR `2026-09-15_epic4-sigma-sampling.md`.
 
 ---
 
@@ -72,7 +75,7 @@ Alerts: `dedup_hour` UTC + Telegram dry-run; ver ADR `2026-09-15_watcher-alerts.
 ```
 Padrão geral:     modular monolith por processo
 Separação:        math / db / indexer / analyzer / watcher / scripts
-Testes:           Vitest (math + invariantes DB + fixtures ticks/positions + watcher)
+Testes:           Vitest (math + invariantes DB + fixtures ticks/positions/markout + watcher)
 ```
 
 | Processo | Privilegio | Papel |

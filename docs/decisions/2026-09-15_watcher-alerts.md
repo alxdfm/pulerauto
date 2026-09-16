@@ -36,7 +36,8 @@ Epic 3 exige alertas com histerese, dedup horário (§18) e liveness (§19). Tel
 
 **Negativas / Trade-offs:**
 - Watcher escreve `alerts` / latches / heartbeats (não DB puramente ro)
-- PositionBundle events e kinds edge/markout ficam para Epic 4
+- PositionBundle events e kinds edge/markout ficam para wiring pós-métricas Epic 4
+- Ordem latch FIRED vs emit foi corrigida depois — ver `2026-09-15_watcher-latch-after-emit.md`
 
 **Impacto no código:**
 - `migrations/007_alerts.sql`, `src/watcher/*`

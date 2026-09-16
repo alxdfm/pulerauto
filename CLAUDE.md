@@ -88,11 +88,12 @@ migrations/                  ← SQL Timescale
 fixtures/                    ← snapshots on-chain / P&L sintético para testes offline
 src/
   math/                      ← primitivas + swap-segments + fee-capture + position P&L
-  db/                        ← client, migrate, invariantes
+                               + EdgeRatio / Markout / regime / SigmaImplied
+  db/                        ← client, migrate, invariantes, swap-span
   indexer/                   ← Whirlpool decode, ticks, swaps, Position
-  analyzer/                  ← position_snapshots / P&L
+  analyzer/                  ← position_snapshots / P&L + pool_metrics_daily / ranking
   watcher/                   ← alertas (histerese + dedup)
-  scripts/
+  scripts/                   ← CLI (swaps, positions, metrics, watcher, soaks)
 scripts/
   onboarding.sh              ← perguntas de setup inicial do projeto
 .ripgrepignore               ← o que o agente NÃO deve ler
@@ -104,11 +105,11 @@ Processos:
 | Processo | Status |
 |----------|--------|
 | `indexer` | ativo (`src/indexer/`) — pool_states, ticks Fixed/Dynamic, swaps/segments, positions |
-| `analyzer` | ativo (`src/analyzer/`) — position_snapshots / P&L; pool_metrics_daily (edge/markout/regime) |
-| `watcher` | ativo (`src/watcher/`) — range_exit/proximity/data_gap, Telegram dry-run |
+| `analyzer` | ativo (`src/analyzer/`) — position_snapshots / P&L; pool_metrics_daily (EdgeRatio / Markout / regime) |
+| `watcher` | ativo (`src/watcher/`) — range_exit/proximity/data_gap, Telegram dry-run; edge/markout alerts depois |
 | `executor` | previsto Fase 7 (`src/executor/`) |
 
-Math canônica: `src/math/`. DB: `src/db/` + `migrations/`.
+Math canônica: `src/math/`. DB: `src/db/` + `migrations/` (001–011).
 
 ---
 

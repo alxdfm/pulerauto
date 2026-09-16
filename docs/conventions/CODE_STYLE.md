@@ -64,8 +64,8 @@ await fetchPosition(id) // perigoso
 ```
 
 ### Math da spec
-- Isolar `W`, `A`, LVR e fee capture em `src/math/` sem I/O
-- Testes Vitest devem bater os exemplos numéricos da spec (§2–§4)
+- Isolar `W`, `A`, LVR, fee capture, EdgeRatio, Markout e regime em `src/math/` sem I/O
+- Testes Vitest devem bater os exemplos numéricos da spec (§2–§4, §7 markout)
 - Divisor de fee growth vem de `dexes.fee_growth_shift`, nunca hardcoded único
 
 ---
