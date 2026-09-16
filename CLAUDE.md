@@ -89,11 +89,13 @@ fixtures/                    ← snapshots on-chain / P&L sintético para testes
 src/
   math/                      ← primitivas + swap-segments + fee-capture + position P&L
                                + EdgeRatio / Markout / regime / SigmaImplied
-  db/                        ← client, migrate, invariantes, swap-span
+                               + WalkForward / RealityCheck / benchmarks (Epic 5)
+  db/                        ← client, migrate, invariantes, swap-span, backtest_runs
   indexer/                   ← Whirlpool decode, ticks, swaps, Position
   analyzer/                  ← position_snapshots / P&L + pool_metrics_daily / ranking
-  watcher/                   ← alertas (histerese + dedup)
-  scripts/                   ← CLI (swaps, positions, metrics, watcher, soaks)
+                               + BacktestRun walk-forward
+  watcher/                   ← alertas (histerese + dedup); range / data_gap / edge / markout
+  scripts/                   ← CLI (swaps, positions, metrics, watcher, backtest, soaks)
 scripts/
   onboarding.sh              ← perguntas de setup inicial do projeto
 .ripgrepignore               ← o que o agente NÃO deve ler
@@ -105,11 +107,11 @@ Processos:
 | Processo | Status |
 |----------|--------|
 | `indexer` | ativo (`src/indexer/`) — pool_states, ticks Fixed/Dynamic, swaps/segments, positions |
-| `analyzer` | ativo (`src/analyzer/`) — position_snapshots / P&L; pool_metrics_daily (EdgeRatio / Markout / regime) |
-| `watcher` | ativo (`src/watcher/`) — range_exit/proximity/data_gap, Telegram dry-run; edge/markout alerts depois |
+| `analyzer` | ativo (`src/analyzer/`) — snapshots / P&L; pool_metrics_daily; BacktestRun (Epic 5) |
+| `watcher` | ativo (`src/watcher/`) — range_exit/proximity/data_gap/edge_decay/markout_negative; Telegram dry-run |
 | `executor` | previsto Fase 7 (`src/executor/`) |
 
-Math canônica: `src/math/`. DB: `src/db/` + `migrations/` (001–011).
+Math canônica: `src/math/`. DB: `src/db/` + `migrations/` (001–012).
 
 ---
 

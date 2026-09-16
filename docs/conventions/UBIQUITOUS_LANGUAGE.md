@@ -78,6 +78,18 @@ Se um termo não está aqui e não é óbvio → **pergunte antes de inventar**.
 **TimeInRange** — Fração/tempo em que o preço permanece dentro do range da Position.
 [Nunca use: uptime genérico]
 
+**BacktestRun** — Execução registrada de simulação histórica (fees, LVR, custos, benchmarks).
+[Nunca use: simulation run genérico, paper trade]
+
+**WalkForward** — Partição train/test temporal; só a janela OOS autoriza capital.
+[Nunca use: cross-validation sem ordem temporal]
+
+**RealityCheck** — Correção de testes múltiplos: bootstrap do máximo sob H0 com `n_trials` (aproximação White; ver ADR `2026-09-16_epic5-reality-check.md`).
+[Nunca use: p-value ingênuo da melhor trial]
+
+**FeeSource** — Origem das fees no BacktestRun: `reconstructed_segments` | `modeled`.
+[Nunca use: fee estimate sem declarar a fonte]
+
 ---
 
 ### Ações / Verbos

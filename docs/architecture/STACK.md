@@ -1,6 +1,6 @@
 # Stack & Arquitetura
 
-> Atualizado: 2026-09-16 (Epics 0–4).
+> Atualizado: 2026-09-16 (Epics 0–5).
 
 ---
 
@@ -15,7 +15,7 @@ Package manager:      pnpm 11
 ## Frontend (se aplicável)
 
 ```
-Framework:      N/A (Fases 0–4; UI depois)
+Framework:      N/A (Fases 0–5; UI depois)
 Estilização:    N/A
 State:          N/A
 ```
@@ -25,7 +25,7 @@ State:          N/A
 ```
 Framework:      processos long-running (indexer, analyzer, watcher, executor);
                 API HTTP depois
-ORM / DB:       PostgreSQL 16 + TimescaleDB; migrations SQL em migrations/
+ORM / DB:       PostgreSQL 16 + TimescaleDB; migrations SQL em migrations/ (001–012)
                 client: pg
 Auth:           nenhum por ora
 ```
@@ -49,7 +49,9 @@ Wallet:         N/A (read-only; executor = Fase 7)
 Ambiente:       mainnet (read-only)
 Pool piloto:    Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE (Orca SOL/USDC ts=4)
 RPC tip:        mainnet-beta ok p/ getProgramAccounts;
-                publicnode ajuda backfill de swaps (batch getTransaction=1)
+                publicnode ajuda backfill recente (batch getTransaction=1);
+                **ledger ~2d** — soak ≥30d exige RPC archival (Helius/Alchemy/…)
+                ver ADR `2026-09-16_swap-span-bridge.md`
 ```
 
 ---
@@ -66,7 +68,9 @@ Position: account 216 B + PDA `["position", mint]`; ver ADR `2026-09-15_whirlpoo
 Fee state / entry: checkpoints + entry_* no open; ver ADR `2026-09-15_position-fee-entry.md`.  
 Alerts: `dedup_hour` UTC + Telegram dry-run; ver ADR `2026-09-15_watcher-alerts.md`.  
 Latch: FIRED após emit + `episode_fired`; ver ADR `2026-09-15_watcher-latch-after-emit.md`.  
-Sinal: amostragem σ / Vol; ver ADR `2026-09-15_epic4-sigma-sampling.md`.
+Sinal: amostragem σ / Vol; ver ADR `2026-09-15_epic4-sigma-sampling.md`.  
+Span-bridge / archival: ADR `2026-09-16_swap-span-bridge.md`.  
+Backtest / Reality Check: ADR `2026-09-16_epic5-reality-check.md`.
 
 ---
 
@@ -75,13 +79,13 @@ Sinal: amostragem σ / Vol; ver ADR `2026-09-15_epic4-sigma-sampling.md`.
 ```
 Padrão geral:     modular monolith por processo
 Separação:        math / db / indexer / analyzer / watcher / scripts
-Testes:           Vitest (math + invariantes DB + fixtures ticks/positions/markout + watcher)
+Testes:           Vitest (math + invariantes DB + fixtures + watcher + Epic 5)
 ```
 
 | Processo | Privilegio | Papel |
 |----------|------------|--------|
 | indexer  | read RPC + write DB | pool_states, ticks, swaps, swap_segments, positions |
-| analyzer | read DB + write métricas | position_snapshots; pool_metrics_daily (edge/markout/regime) |
+| analyzer | read DB + write métricas | position_snapshots; pool_metrics_daily; BacktestRun |
 | watcher  | read DB + write alerts | histerese, dedup, heartbeat → Telegram |
 | executor | signer isolado | Fase 7 |
 

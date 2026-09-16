@@ -35,17 +35,19 @@
 
 ## Epic 1 — Segmentação multi-tick + fee capture
 
-**Status (2026-09-15):** pipeline done; gate fee 100% no conjunto indexado; soak 30d de calendário em resume (RPC).
+**Status (2026-09-16):** pipeline done; soak 30d de calendário bloqueado sem RPC archival.
 
 **Done (spec):** `Σ fee_seg = fee_amount` em **100%** dos swaps de 30 dias de mercado.  
-**Done (hoje):** gate SQL 100% sobre swaps indexados; backfill resumível `pnpm swaps:backfill --hours 720 --max 0` (publicnode: batch=1; quota RPC acelera profundidade de calendário).
+**Done (hoje):** gate SQL 100% sobre swaps indexados; backfill resumível `pnpm swaps:backfill`; `pnpm swaps:span-bridge` (cursor separado); **30d calendário bloqueado sem RPC archival** (publicnode ledger ~2d — ADR `2026-09-16_swap-span-bridge.md`).
 
 - Decoder `Traded` + `src/indexer/index-swaps.ts` / `persist-swap.ts`
 - Math `src/math/swap-segments.ts` + `allocateFeeSegments`
 - Cursor `indexer_cursors` (`migrations/005_indexer_cursors.sql`)
 - `pnpm swaps:check` → `sum_fee_seg_equals_fee_amount`
 - `pnpm swaps:span` → gate calendário ≥30d + fee 100%
+- `pnpm swaps:span-bridge` → sig-walk + insert na ponta (cursor `swaps-span-bridge:*`)
 - ADR: `docs/decisions/2026-09-15_whirlpool-traded-ingest.md`
+- ADR span/archival: `docs/decisions/2026-09-16_swap-span-bridge.md`
 
 ---
 
@@ -75,10 +77,10 @@
 **Done quando:** zero alertas duplicados em 7 dias de mercado real.  
 **Done (hoje):** `alert_rules`/`alerts` com dedup horário (`dedup_hour` UTC); latches de histerese; heartbeat; `pnpm watcher` / `watcher:once`; Telegram dry-run sem token.
 
-**Dívida conhecida (code review):** **fechada (2026-09-15)** — FIRED só após emit; `episode_fired`; `delivery_status`; DB checkout sem HTTP de canal. ADR: `2026-09-15_watcher-latch-after-emit.md`. Soak 7d zero-dup ainda em calendário (`pnpm alerts:dedup-check`).
+**Dívida conhecida (code review):** **fechada (2026-09-15)** — FIRED só após emit; `episode_fired`; `delivery_status`; DB checkout sem HTTP de canal. ADR: `2026-09-15_watcher-latch-after-emit.md`. Soak 7d: `pnpm alerts:dedup-check 7` ok na janela atual; manter `pnpm watcher` no calendário.
 
 - Schema: `migrations/007_alerts.sql` + `009_alert_latch_fired.sql`
-- Watcher: `src/watcher/` (range_exit, range_proximity, data_gap)
+- Watcher: `src/watcher/` (range_exit, range_proximity, data_gap, edge_decay, markout_negative)
 - ADR: `docs/decisions/2026-09-15_watcher-alerts.md` (+ latch-after-emit)
 
 ---
@@ -88,23 +90,25 @@
 **Status (2026-09-15):** math + `pool_metrics_daily` + ranking + markout fixture; soak 30d ainda em resume para σ estável.
 
 **Done quando:** ranking semanal reproduzível; markout com sinal validado em caso conhecido.  
-**Done (hoje):** `src/math/{depth-v2,sigma-implied,edge-ratio,markout,regime,sigma-realized}`; migration `010_pool_metrics_daily.sql`; `metrics:daily` / `ranking:weekly` / `markout:check`; fixture `fixtures/markout-sign-cases.json`. Alertas `edge_decay`/`markout_negative` ainda não wired no watcher.
+**Done (hoje):** `src/math/{depth-v2,sigma-implied,edge-ratio,markout,regime,sigma-realized}`; migration `010_pool_metrics_daily.sql`; `metrics:daily` / `ranking:weekly` / `markout:check`; fixture `fixtures/markout-sign-cases.json`. Alertas `edge_decay`/`markout_negative` **wired** (2026-09-16).
 
 - Math + analyzer: `pool-metrics-daily.ts`, `weekly-ranking.ts`
 - ADR: `2026-09-15_epic4-sigma-sampling.md`
-- Soak Epic 1 (`pnpm swaps:span`) ainda limita qualidade de `sigma_30d` / ER 90d
+- Soak Epic 1 (`pnpm swaps:span`) ainda limita qualidade de `sigma_30d` / ER 90d (RPC archival)
 
 ---
 
 ## Epic 5 — Backtest + walk-forward
 
-**Status:** não iniciado.
+**Status (2026-09-16):** scaffolding done; L calibrado a notional; train ≤3 `rangeRatio`; OOS só com folds; Reality Check OOS p < 0.05 ainda pendente (histórico curto / archival).
 
-**Done quando:** supera 3 benchmarks OOS com Reality Check p < 0.05.
+**Done quando:** supera 3 benchmarks OOS com Reality Check p < 0.05.  
+**Done (hoje):** migration `012_backtest_runs.sql`; math WalkForward / RealityCheck / risk / benchmarks / lvr-period; analyzer simulate + report (fees por token de input; full-range com fees reconstruídas); `pnpm backtest:run` / `backtest:check`; ADR Reality Check.
 
-- Fees reconstruídas (não fee growth “chute”)
-- Walk-forward; Reality Check / n_trials (§12)
-- Gates OOS no DB
+- Fees reconstruídas (`fee_source = reconstructed_segments`) nos OOS
+- Walk-forward (recusa OOS sem train/test folds); Reality Check / `n_trials` (§12)
+- Gates OOS no DB (CHECK modeled+OOS)
+- Bloqueio prático: amostra §12 ≥90d / 3 regimes + soak swaps (RPC archival)
 
 ---
 
@@ -134,10 +138,10 @@
 ## Ordem de implementação sugerida (próximas sessões)
 
 ```
-1. Soak Epic 1 — backfill até span ≥30d (em andamento; pnpm swaps:span)
-2. Soak alertas 7d — pnpm watcher + alerts:dedup-check
-3. Epic 5 — backtest / walk-forward
-4. Wire watcher edge_decay / markout_negative (follow-up Epic 4)
+1. Soak Epic 1 — backfill denso + span-bridge; RPC archival para ≥30d
+2. Soak alertas 7d contínuo — pnpm watcher (dedup-check já ok na janela)
+3. Aprofundar histórico → Reality Check OOS p < 0.05 (fechar Epic 5 Done)
+4. Epic 6 quando sinal/OOS estáveis
 ```
 
 ---

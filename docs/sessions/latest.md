@@ -1,50 +1,36 @@
 # Última Sessão — Contexto Persistido
 
 **Última atualização:** 2026-09-16  
-**Sessão:** Docs congruentes pós Epic 0–4 + push qualidade/sinal
+**Sessão:** Soaks + watcher edge/markout + Epic 5 + code-review fixes + docs audit
 
 ---
 
-## O que foi feito (histórico recente)
+## O que foi feito
 
-- **Qualidade Epic 2/3 + Epic 4** commitados e pushados (`master`)
-- **Code review fix:** RPC fora de tx; Telegram fora do checkout DB; fees por token de input; métricas sem fabricar vol; índice mint parcial (`011`)
-- **Docs:** README / OVERVIEW / STACK / CLAUDE / WORKPLAN / CODE_STYLE alinhados a Epics 0–4
+- Migration `012_backtest_runs.sql`; `alerts:ensure-rules`; watcher `edge_decay` / `markout_negative` wired
+- Epic 5 scaffolding + correções de review (L calibrado, fees por token, full-range reconstruído, WF obrigatório, N+1 segments, span-bridge erros explícitos)
+- Docs alinhados (README / CLAUDE / STACK / OVERVIEW / WORKPLAN / UL / ADRs / sessão)
 
 ---
 
 ## Estado
 
 ```
-Funcionando:     indexer, analyzer (snapshots + pool_metrics_daily), watcher, Epic 4 math
-Em progresso:    soak swaps → span ≥30d; soak alertas 7d
-Bloqueado:       nada crítico
-Dívida:          watcher edge_decay / markout_negative (follow-up)
-Próximo epic:    Epic 5 — backtest + walk-forward (após soak 30d)
+Funcionando:     indexer/analyzer/watcher (5 kinds), Epic 5 CLI, testes 69/69
+Em progresso:    backfill / span-bridge quando RPC disponível
+Bloqueado:       swaps:span 30 sem RPC archival (publicnode ~2d ledger)
+Dívida:          Reality Check OOS p<0.05; amostra §12 ≥90d / 3 regimes
 ```
 
 ---
 
-## Próximos passos
-
-1. `pnpm swaps:span 30` até `ok: true`
-2. `pnpm watcher` 7d + `pnpm alerts:dedup-check 7`
-3. `pnpm metrics:daily` + `pnpm ranking:weekly` com histórico mais profundo
-4. Epic 5
-
----
-
-## Comandos
+## Desbloqueio crítico
 
 ```bash
-pnpm db:migrate
-pnpm test
+# SOLANA_RPC_URL=… archival (Helius/Alchemy/…)
+pnpm swaps:span-bridge --days 30
+pnpm swaps:backfill --hours 720 --max 500 --delay-ms 150
 pnpm swaps:span 30
-SOLANA_RPC_URL=https://solana.publicnode.com pnpm swaps:backfill --hours 720 --max 100 --delay-ms 400
-pnpm alerts:dedup-check 7
-pnpm metrics:daily --day YYYY-MM-DD
-pnpm ranking:weekly
-pnpm markout:check
-pnpm positions:index --mint <nft> --wallet <addr> --entry-price … --entry-amount0 … --entry-amount1 … --entry-value-usd …
-pnpm watcher
+pnpm backtest:run --strategy 1 --pool 1 --days 90 --train-days 30 --test-days 7 --n-trials 3
+pnpm backtest:check --strategy 1
 ```

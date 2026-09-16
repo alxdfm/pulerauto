@@ -1,6 +1,6 @@
 # Overview do Sistema
 
-> Atualizado: 2026-09-16 (Epics 0–4).
+> Atualizado: 2026-09-16 (Epics 0–5).
 
 ---
 
@@ -28,19 +28,19 @@ pools e alertar posições — modo advisory por padrão; execução live é opt
       │
       ▼
 [analyzer] →  position_snapshots, P&L decomposto,
-              pool_metrics_daily (EdgeRatio, Markout, regime)
+              pool_metrics_daily (EdgeRatio, Markout, regime),
+              BacktestRun (walk-forward + RealityCheck)
       │
       ▼
 [watcher]  →  alertas (histerese + dedup) → Telegram (dry-run sem token)
-              (edge_decay / markout_negative ainda não wired)
+              range_exit / range_proximity / data_gap / edge_decay / markout_negative
       │
       ▼
 [executor] →  dry-run → live (Fase 7; signer isolado)      (ainda não)
 ```
 
 Roadmap deliberado: **contabilidade → sinal → execução** (Parte IV da spec).  
-Fase atual: contabilidade (0–2) + alertas (3) + sinal (4) no código; próximo = soaks + Epic 5.  
-Soak: swaps calendário 30d e alertas 7d zero-dup ainda em resume (RPC / mercado).
+Fase atual: Epics 0–5 no código; soak swaps 30d exige RPC archival (publicnode ~2d ledger).
 
 ---
 
@@ -49,11 +49,11 @@ Soak: swaps calendário 30d e alertas 7d zero-dup ainda em resume (RPC / mercado
 | Módulo | Responsabilidade | Localização |
 |--------|------------------|-------------|
 | Spec | Modelo LVR, break-even, fee capture | `docs/architecture/lp-assistant-spec-v2.md` |
-| math core | W, A, LVR, ticks, sqrt-price, swap-segments, fee-capture, position P&L, EdgeRatio, Markout, regime | `src/math/` |
+| math core | W, A, LVR, ticks, sqrt-price, swap-segments, fee-capture, position P&L, EdgeRatio, Markout, regime, WalkForward, RealityCheck | `src/math/` |
 | indexer | Whirlpool decode, ticks Fixed/Dynamic, swaps/`Traded`, Position | `src/indexer/` |
-| db | client, migrate, invariantes §15, swap-span | `src/db/` |
-| analyzer | P&L snapshots + `pool_metrics_daily` / ranking semanal | `src/analyzer/` |
-| watcher | Alertas histerese + dedup + heartbeat | `src/watcher/` |
+| db | client, migrate, invariantes §15, swap-span, backtest_runs | `src/db/` |
+| analyzer | P&L snapshots + `pool_metrics_daily` / ranking + BacktestRun | `src/analyzer/` |
+| watcher | Alertas histerese + dedup + heartbeat (range / data_gap / edge / markout) | `src/watcher/` |
 | executor | Execução dry-run/live | previsto: `src/executor/` |
 
 ---
@@ -64,7 +64,7 @@ Soak: swaps calendário 30d e alertas 7d zero-dup ainda em resume (RPC / mercado
 |---------|------|----------------|
 | Solana RPC | RPC | Estado Orca / swaps / positions (leitura) |
 | Orca Whirlpools | on-chain program | Pool SOL/USDC piloto + DynamicTickArray + Position |
-| PostgreSQL + TimescaleDB | DB | Schema §14–18 + `swap_segments` + cursors + alerts + `pool_metrics_daily` |
+| PostgreSQL + TimescaleDB | DB | Schema §14–18 + `swap_segments` + cursors + alerts + `pool_metrics_daily` + `backtest_runs` |
 | Telegram | Alertas | Canal default (dry-run se token ausente) |
 | EVM RPC / Uniswap | RPC | Multi-chain (Fase 6+) |
 | Perp venue (TBD) | API | Hedges (após execução) |
@@ -75,6 +75,7 @@ Soak: swaps calendário 30d e alertas 7d zero-dup ainda em resume (RPC / mercado
 
 - **Market state**: pools, swaps, segmentos, liquidez por tick (checkpoints; events contínuos ainda não)
 - **Positions & strategies**: carteiras, posições, rebalances, hedges DDL (lógica de hedge = Fase 7)
-- **Signal**: EdgeRatio, Markout, regime, ranking semanal (Epic 4; alertas de sinal ainda follow-up)
-- **Risk & alerts**: regras, dedup, heartbeat (Epic 3; soak 7d pendente)
+- **Signal**: EdgeRatio, Markout, regime, ranking semanal; alertas `edge_decay` / `markout_negative` wired
+- **Risk & alerts**: regras, dedup, heartbeat (Epic 3; manter soak calendário com `pnpm watcher`)
+- **Backtest**: WalkForward + RealityCheck + `backtest_runs` (Epic 5 scaffolding; Done OOS pendente)
 - **Execution**: dry-run / live (Epic 7)
