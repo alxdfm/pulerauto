@@ -1,5 +1,6 @@
 /**
- * Evaluate range_exit / range_proximity / data_gap rules once.
+ * Evaluate range_exit / range_proximity / data_gap / edge_decay /
+ * markout_negative rules once.
  * Latch FIRED only after successful emit.
  * DB checkout never spans Telegram / channel HTTP.
  */
@@ -25,6 +26,7 @@ import {
   sendTelegramAlert,
   type SendAlertResult,
 } from './telegram.js'
+import { loadLatestMetricSignal } from './metric-signal.js'
 
 export type WatchCycleResult = {
   rulesChecked: number
@@ -145,7 +147,8 @@ export async function runWatchCycle(
       `SELECT r.id::text, r.kind, r.position_id::text, r.strategy_id::text,
               r.threshold::text, r.cooldown_sec, r.channels,
               s.hysteresis_min_sec,
-              p.tick_lower, p.tick_upper, p.pool_id::text
+              p.tick_lower, p.tick_upper,
+              COALESCE(p.pool_id, s.pool_id)::text AS pool_id
        FROM alert_rules r
        LEFT JOIN positions p ON p.id = r.position_id
        LEFT JOIN strategies s ON s.id = COALESCE(r.strategy_id, p.strategy_id)
@@ -249,11 +252,7 @@ export async function runWatchCycle(
       }
 
       if (rule.kind === 'data_gap' && rule.strategy_id) {
-        const { rows } = await client.query<{ pool_id: string | null }>(
-          `SELECT pool_id::text FROM strategies WHERE id = $1`,
-          [Number(rule.strategy_id)],
-        )
-        const poolId = rows[0]?.pool_id ? Number(rows[0].pool_id) : null
+        const poolId = rule.pool_id ? Number(rule.pool_id) : null
         if (poolId == null) {
           skipped += 1
           continue
@@ -291,6 +290,54 @@ export async function runWatchCycle(
             poolId,
             lastPoolStateTs: state?.ts?.toISOString() ?? null,
             dataGapSec,
+          },
+          pending,
+        })
+        if (status === 'emitted') emitted += 1
+        else skipped += 1
+        continue
+      }
+
+      if (
+        (rule.kind === 'edge_decay' || rule.kind === 'markout_negative') &&
+        rule.pool_id
+      ) {
+        const poolId = Number(rule.pool_id)
+        const strategyId = rule.strategy_id
+          ? Number(rule.strategy_id)
+          : null
+        const positionId = rule.position_id
+          ? Number(rule.position_id)
+          : null
+        const signal = await loadLatestMetricSignal(client, {
+          poolId,
+          kind: rule.kind,
+          thresholdRaw: rule.threshold,
+        })
+
+        const status = await applyBooleanRule({
+          client,
+          ruleId,
+          conditionTrue: signal.conditionTrue,
+          now,
+          minSec,
+          cooldownSec,
+          severity: rule.kind === 'edge_decay' ? 'warn' : 'action',
+          kind: rule.kind,
+          channels: rule.channels,
+          dedupKey: buildDedupKey({
+            kind: rule.kind,
+            positionId,
+            strategyId,
+            extra: `pool:${poolId}`,
+          }),
+          payload: {
+            poolId,
+            strategyId,
+            positionId,
+            threshold: signal.threshold,
+            signalValue: signal.signalValue,
+            metricsDay: signal.metricsDay,
           },
           pending,
         })
