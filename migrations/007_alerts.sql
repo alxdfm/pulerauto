@@ -1,4 +1,5 @@
--- Epic 3: alert rules + alerts (spec §18). backtest_runs fica no Epic 5.
+-- Epic 3: alert rules + alerts (spec §18).
+-- backtest_runs: migrations/012_backtest_runs.sql (Epic 5).
 -- Note: date_trunc('hour', timestamptz) is STABLE (TZ-dependent), so dedup uses
 -- explicit dedup_hour column set by the writer (UTC hour bucket).
 
